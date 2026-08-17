@@ -1,0 +1,4 @@
+django
+django-ckeditor
+Pillow
+psycopg[binary]
