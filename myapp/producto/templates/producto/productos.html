@@ -76,7 +76,7 @@
                         <div class="card product-card h-100">
                             <div class="product-image-wrap">
                                 {% if producto.imagen %}
-                                    <img src="{{ producto.imagen.url }}" class="card-img-top product-image" alt="{{ producto.nombre }}" loading="lazy">
+                                    <img src="{{ producto.imagen.url }}" class="card-img-top product-image" alt="{{ producto.nombre }}" width="300" height="300" loading="lazy">
                                 {% else %}
                                     <div class="product-placeholder" role="img" aria-label="Producto sin imagen">
                                         <i class="bi bi-image" aria-hidden="true"></i>

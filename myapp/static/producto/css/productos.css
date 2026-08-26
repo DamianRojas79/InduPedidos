@@ -59,8 +59,8 @@ h1 { font-size: clamp(3rem, 7vw, 5.4rem); line-height: .95; margin-bottom: 1.25r
 .result-count { color: var(--muted); font-size: .9rem; margin: 0; }
 
 .product-card { background: transparent; border: 0; }
-.product-image-wrap { background: var(--cream); border-radius: 4px; overflow: hidden; position: relative; }
-.product-image, .product-placeholder { aspect-ratio: 4 / 5; height: auto; object-fit: cover; width: 100%; }
+.product-image-wrap { background: var(--cream); border-radius: 4px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; width: 300px; }
+.product-image, .product-placeholder { height: 300px; object-fit: cover; width: 300px; }
 .product-image { transition: transform .55s ease; }
 .product-card:hover .product-image { transform: scale(1.035); }
 .product-placeholder { align-items: center; color: #a9a89f; display: flex; flex-direction: column; gap: .7rem; justify-content: center; }
