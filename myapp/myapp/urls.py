@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from . import views
 
 #Django Settings - visualizar imagenes desde el dasboard
@@ -27,7 +28,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('', views.hola, name='home'),
     #Producto
-    path('producto/', include('producto.urls')),
+    path('productos/', include('producto.urls')),
+    path('producto/', RedirectView.as_view(pattern_name='producto', permanent=False)),
     path('hola/', views.hola, name='hola'),
 
     #Admin
