@@ -12,7 +12,5 @@ myapp/myapp/__pycache__/
 myapp/producto/__pycache__/
 myapp/producto/migrations/__pycache__/
 
-# Imágenes existentes (la carpeta se conserva mediante .gitkeep)
-myapp/media/producto/medias.png
-myapp/media/producto/zapatillas_adidas.png
-myapp/media/producto/cartera_cuero.png
+# Imágenes de productos
+myapp/media/producto/
