@@ -33,10 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        orderList.innerHTML = order.map((item) => `
-            <div class="order-item" data-order-id="${item.id}">
+        orderList.innerHTML = order.map((item) => {
+            const options = [
+                item.color ? `Color: ${escapeHtml(item.color)}` : '',
+                item.size ? `Talle: ${escapeHtml(item.size)}` : '',
+            ].filter(Boolean).join(' · ');
+
+            return `
+            <div class="order-item" data-order-id="${escapeHtml(item.lineId || item.id)}">
                 <div>
                     <div class="order-item-name">${escapeHtml(item.name)}</div>
+                    ${options ? `<div class="order-item-options">${options}</div>` : ''}
                     <div class="order-item-price">${currency.format(item.price)}</div>
                 </div>
                 <div class="quantity-control" aria-label="Cantidad de ${escapeHtml(item.name)}">
@@ -48,7 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
-        `).join('');
+        `;
+        }).join('');
     };
 
     function escapeHtml(value) {
@@ -72,17 +80,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.querySelectorAll('.option-button').forEach((button) => {
+        button.addEventListener('click', () => {
+            const group = button.closest('[data-option-group]');
+            group.querySelectorAll('.option-button').forEach((option) => {
+                const selected = option === button;
+                option.classList.toggle('active', selected);
+                option.setAttribute('aria-pressed', selected.toString());
+            });
+            group.classList.remove('has-error');
+            const error = button.closest('.product-options').querySelector('.option-error');
+            error.textContent = '';
+        });
+    });
+
     document.querySelectorAll('.add-product').forEach((button) => {
         button.addEventListener('click', () => {
             const id = button.dataset.productId;
-            const existing = order.find((item) => item.id === id);
+            const card = button.closest('.product-card');
+            const optionGroups = [...card.querySelectorAll('[data-option-group]')];
+            const missingGroups = optionGroups.filter((group) => !group.querySelector('.option-button.active'));
+
+            optionGroups.forEach((group) => group.classList.toggle('has-error', missingGroups.includes(group)));
+            const error = card.querySelector('.option-error');
+            if (missingGroups.length > 0) {
+                const labels = missingGroups.map((group) => group.dataset.optionGroup === 'size' ? 'talle' : 'color');
+                error.textContent = `Elegí ${labels.join(' y ')} para continuar.`;
+                missingGroups[0].querySelector('.option-button').focus();
+                return;
+            }
+
+            const selectedColor = card.querySelector('[data-option-group="color"] .option-button.active')?.dataset.optionValue || '';
+            const selectedSize = card.querySelector('[data-option-group="size"] .option-button.active')?.dataset.optionValue || '';
+            const lineId = [id, selectedColor, selectedSize].join('|');
+            const existing = order.find((item) => (item.lineId || item.id) === lineId);
             if (existing) {
                 existing.quantity += 1;
             } else {
                 order.push({
                     id,
+                    lineId,
                     name: button.dataset.productName,
                     price: Number(button.dataset.productPrice),
+                    color: selectedColor,
+                    size: selectedSize,
                     quantity: 1,
                 });
             }
@@ -96,12 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = event.target.closest('[data-action]');
         const row = event.target.closest('[data-order-id]');
         if (!button || !row) return;
-        const item = order.find((product) => product.id === row.dataset.orderId);
+        const item = order.find((product) => (product.lineId || product.id) === row.dataset.orderId);
         if (!item) return;
         if (button.dataset.action === 'increase') item.quantity += 1;
         if (button.dataset.action === 'decrease') item.quantity -= 1;
         if (button.dataset.action === 'remove' || item.quantity <= 0) {
-            order = order.filter((product) => product.id !== item.id);
+            order = order.filter((product) => (product.lineId || product.id) !== (item.lineId || item.id));
         }
         saveOrder();
         renderOrder();

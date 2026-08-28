@@ -69,6 +69,18 @@ h1 { font-size: clamp(3rem, 7vw, 5.4rem); line-height: .95; margin-bottom: 1.25r
 .product-card .card-body { padding: 1.1rem 0 0; }
 .product-name { font-size: 1.05rem; font-weight: 600; margin-bottom: .35rem; }
 .product-price { color: var(--sage-dark); font-size: 1.12rem; font-weight: 700; margin-bottom: 1rem; }
+.product-options { margin-bottom: 1.15rem; }
+.product-option-group { border: 0; margin: 0 0 .8rem; min-width: 0; padding: 0; }
+.product-option-group legend { color: var(--muted); float: none; font-size: .72rem; font-weight: 700; letter-spacing: .08em; margin-bottom: .45rem; text-transform: uppercase; width: auto; }
+.option-buttons { display: flex; flex-wrap: wrap; gap: .4rem; }
+.option-button { background: var(--paper); border: 1px solid var(--border); border-radius: 100px; color: var(--ink); font-size: .78rem; line-height: 1.2; min-height: 34px; padding: .42rem .72rem; transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease; }
+.option-button-size { border-radius: 2px; min-width: 38px; padding-left: .55rem; padding-right: .55rem; }
+.option-button:hover { border-color: var(--sage); transform: translateY(-1px); }
+.option-button:focus-visible { outline: 3px solid rgba(94, 113, 91, .25); outline-offset: 2px; }
+.option-button.active { background: var(--sage-dark); border-color: var(--sage-dark); color: #fff; }
+.product-option-group.has-error legend { color: #a33f2e; }
+.product-option-group.has-error .option-button { border-color: #c96f4a; }
+.option-error { color: #a33f2e; font-size: .78rem; margin: -.25rem 0 0; min-height: 1.15rem; }
 .add-product { border: 1px solid var(--ink); border-radius: 2px; color: var(--ink); font-weight: 600; padding: .7rem 1rem; transition: .2s ease; width: 100%; }
 .add-product:hover, .add-product:focus { background: var(--ink); color: #fff; }
 .empty-state { background: var(--cream); color: var(--muted); padding: 4rem 2rem; text-align: center; }
@@ -80,6 +92,7 @@ h1 { font-size: clamp(3rem, 7vw, 5.4rem); line-height: .95; margin-bottom: 1.25r
 .offcanvas-body { padding: 1.5rem; }
 .order-item { align-items: center; border-bottom: 1px solid var(--border); display: grid; gap: .75rem; grid-template-columns: 1fr auto auto; padding: 1rem 0; }
 .order-item-name { font-weight: 600; }
+.order-item-options { color: var(--sage-dark); font-size: .78rem; margin-top: .12rem; }
 .order-item-price { color: var(--muted); font-size: .83rem; }
 .quantity-control { align-items: center; border: 1px solid var(--border); display: flex; }
 .quantity-control button { background: transparent; border: 0; height: 30px; width: 30px; }
