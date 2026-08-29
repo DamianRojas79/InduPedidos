@@ -24,10 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderOrder = () => {
         const units = order.reduce((total, item) => total + item.quantity, 0);
         const total = order.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        orderCount.textContent = units;
-        orderTotal.textContent = currency.format(total);
-        clearOrder.disabled = order.length === 0;
+        if (orderCount) orderCount.textContent = units;
+        if (orderTotal) orderTotal.textContent = currency.format(total);
+        if (clearOrder) clearOrder.disabled = order.length === 0;
 
+        if (!orderList) return;
         if (order.length === 0) {
             orderList.innerHTML = '<div class="order-empty"><i class="bi bi-bag"></i><p class="mt-2 mb-0">Tu pedido está vacío.</p></div>';
             return;
@@ -75,8 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.classList.toggle('d-none', !show);
                 if (show) visible += 1;
             });
-            resultCount.textContent = `${visible} ${visible === 1 ? 'producto' : 'productos'}`;
-            emptyResults.classList.toggle('d-none', visible !== 0);
+            if (resultCount) resultCount.textContent = `${visible} ${visible === 1 ? 'producto' : 'productos'}`;
+            if (emptyResults) emptyResults.classList.toggle('d-none', visible !== 0);
         });
     });
 
@@ -133,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    orderList.addEventListener('click', (event) => {
+    orderList?.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action]');
         const row = event.target.closest('[data-order-id]');
         if (!button || !row) return;
@@ -148,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOrder();
     });
 
-    clearOrder.addEventListener('click', () => {
+    clearOrder?.addEventListener('click', () => {
         order = [];
         saveOrder();
         renderOrder();

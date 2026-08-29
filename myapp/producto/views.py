@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.db.models import Count
 
 from .models import Categoria, Producto
@@ -11,7 +11,6 @@ def index(request):
         .filter(product_count__gt=0)
         .order_by('descripcion')
     )
-
     return render(
         request,
         'producto/productos.html',
@@ -19,4 +18,16 @@ def index(request):
             'productos': productos,
             'categorias': categorias,
         },
+    )
+
+
+def detalle(request, producto_id):
+    producto = get_object_or_404(
+        Producto.objects.select_related('categoria'),
+        pk=producto_id,
+    )
+    return render(
+        request,
+        'producto/detalle_producto.html',
+        {'producto': producto},
     )
