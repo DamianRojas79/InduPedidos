@@ -1,8 +1,10 @@
 from django.contrib import admin
 from django.db import models
 from django.test import SimpleTestCase
+from django.urls import resolve, reverse
 
 from .models import Categoria, Producto
+from .views import detalle
 
 
 class CategoriaModelTests(SimpleTestCase):
@@ -47,5 +49,11 @@ class CategoriaModelTests(SimpleTestCase):
 
     def test_categoria_esta_registrada_en_admin(self):
         self.assertIn(Categoria, admin.site._registry)
+
+    def test_url_de_detalle_del_producto(self):
+        url = reverse('detalle_producto', args=[42])
+
+        self.assertEqual(url, '/productos/42/')
+        self.assertIs(resolve(url).func, detalle)
 
 # Create your tests here.
