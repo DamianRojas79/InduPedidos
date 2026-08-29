@@ -1,0 +1,99 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ producto.nombre }} - detalle del producto en InduPedidos.">
+    <title>{{ producto.nombre }} | InduPedidos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'producto/css/productos.css' %}" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="navbar navbar-dark" aria-label="Navegación principal">
+            <div class="container">
+                <a class="navbar-brand" href="{% url 'producto' %}"><span class="brand-mark">IP</span> InduPedidos</a>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <a class="social-link d-none d-sm-inline-flex" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+                    <a class="social-link d-none d-sm-inline-flex" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                    <button class="order-button ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#pedido" aria-controls="pedido">
+                        <i class="bi bi-bag"></i><span class="d-none d-sm-inline">Mi pedido</span><span id="cantidad-pedido" class="badge rounded-pill">0</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container detail-main">
+        <nav class="detail-breadcrumb" aria-label="Migas de pan">
+            <a href="{% url 'producto' %}">Productos</a> <span aria-hidden="true">/</span> <span>{{ producto.nombre }}</span>
+        </nav>
+        <article class="detail-grid">
+            <div class="detail-media">
+                {% if producto.imagen %}
+                    <img class="detail-image" src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" width="700" height="700">
+                {% else %}
+                    <div class="detail-placeholder" role="img" aria-label="Producto sin imagen"><i class="bi bi-image"></i><span>Imagen no disponible</span></div>
+                {% endif %}
+            </div>
+            <div class="detail-info product-card">
+                {% if producto.categoria %}<p class="detail-category">{{ producto.categoria.descripcion }}</p>{% endif %}
+                <h1 class="detail-title">{{ producto.nombre }}</h1>
+                <p class="detail-price">$ {{ producto.precio|floatformat:2 }}</p>
+
+                {% if producto.color or producto.talle %}
+                    <div class="product-options">
+                        {% if producto.color %}
+                            <fieldset class="product-option-group" data-option-group="color">
+                                <legend>Elegí un color</legend>
+                                <div class="option-buttons">
+                                    {% for color in producto.color %}<button class="option-button" type="button" data-option-value="{{ color }}" aria-pressed="false">{{ color }}</button>{% endfor %}
+                                </div>
+                            </fieldset>
+                        {% endif %}
+                        {% if producto.talle %}
+                            <fieldset class="product-option-group" data-option-group="size">
+                                <legend>Elegí un talle</legend>
+                                <div class="option-buttons">
+                                    {% for talle in producto.talle %}<button class="option-button option-button-size" type="button" data-option-value="{{ talle }}" aria-pressed="false">{{ talle }}</button>{% endfor %}
+                                </div>
+                            </fieldset>
+                        {% endif %}
+                        <p class="option-error" role="alert" aria-live="polite"></p>
+                    </div>
+                {% endif %}
+
+                <button class="btn add-product" type="button" data-product-id="{{ producto.id }}" data-product-name="{{ producto.nombre }}" data-product-price="{{ producto.precio|stringformat:'f' }}">
+                    <i class="bi bi-bag-plus me-2"></i>Añadir al pedido
+                </button>
+            </div>
+        </article>
+
+        <section class="detail-description" aria-labelledby="titulo-descripcion">
+            <h2 id="titulo-descripcion">Descripción</h2>
+            <div class="detail-description-content">{{ producto.desc|safe }}</div>
+        </section>
+    </main>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="pedido" aria-labelledby="titulo-pedido">
+        <div class="offcanvas-header">
+            <div><p class="eyebrow text-dark mb-1">Tu selección</p><h2 class="offcanvas-title" id="titulo-pedido">Mi pedido</h2></div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column">
+            <div id="lista-pedido" class="order-list"></div>
+            <div class="order-summary mt-auto pt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3"><span>Total estimado</span><strong id="total-pedido">$ 0,00</strong></div>
+                <button id="vaciar-pedido" class="btn btn-outline-secondary w-100" type="button">Vaciar pedido</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="producto-toast" class="toast border-0" role="status" aria-live="polite" aria-atomic="true"><div class="toast-body d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill"></i><span>Producto agregado al pedido.</span></div></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'producto/js/productos.js' %}"></script>
+</body>
+</html>
