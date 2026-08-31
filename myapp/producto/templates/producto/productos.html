@@ -90,45 +90,6 @@
                             <div class="card-body d-flex flex-column">
                                 <h3 class="product-name"><a href="{% url 'detalle_producto' producto.id %}">{{ producto.nombre }}</a></h3>
                                 <p class="product-price">$ {{ producto.precio|floatformat:2 }}</p>
-                                {% if producto.color or producto.talle %}
-                                    <div class="product-options">
-                                        {% if producto.color %}
-                                            <fieldset class="product-option-group" data-option-group="color">
-                                                <legend>Color</legend>
-                                                <div class="option-buttons">
-                                                    {% for color in producto.color %}
-                                                        <button class="option-button" type="button" data-option-value="{{ color }}" aria-pressed="false">
-                                                            {{ color }}
-                                                        </button>
-                                                    {% endfor %}
-                                                </div>
-                                            </fieldset>
-                                        {% endif %}
-                                        {% if producto.talle %}
-                                            <fieldset class="product-option-group" data-option-group="size">
-                                                <legend>Talle</legend>
-                                                <div class="option-buttons">
-                                                    {% for talle in producto.talle %}
-                                                        <button class="option-button option-button-size" type="button" data-option-value="{{ talle }}" aria-pressed="false">
-                                                            {{ talle }}
-                                                        </button>
-                                                    {% endfor %}
-                                                </div>
-                                            </fieldset>
-                                        {% endif %}
-                                        <p class="option-error" role="alert" aria-live="polite"></p>
-                                    </div>
-                                {% endif %}
-                                <button
-                                    class="btn add-product mt-auto"
-                                    type="button"
-                                    data-product-id="{{ producto.id }}"
-                                    data-product-name="{{ producto.nombre }}"
-                                    data-product-price="{{ producto.precio|stringformat:'f' }}"
-                                >
-                                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                    Agregar al pedido
-                                </button>
                             </div>
                         </div>
                     </article>
