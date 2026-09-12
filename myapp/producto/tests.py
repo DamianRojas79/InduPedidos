@@ -3,7 +3,7 @@ from django.db import models
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 
-from .models import Categoria, Producto
+from .models import Categoria, Producto, Proveedor
 from .views import detalle
 
 
@@ -49,6 +49,26 @@ class CategoriaModelTests(SimpleTestCase):
 
     def test_categoria_esta_registrada_en_admin(self):
         self.assertIn(Categoria, admin.site._registry)
+
+    def test_configuracion_del_modelo_proveedor(self):
+        self.assertEqual(Proveedor._meta.db_table, 'proveedor')
+        self.assertEqual(Proveedor._meta.get_field('nombre').max_length, 100)
+        self.assertEqual(Proveedor._meta.get_field('calle_nombre').max_length, 100)
+        self.assertEqual(Proveedor._meta.get_field('localidad').max_length, 100)
+        self.assertFalse(Proveedor._meta.get_field('calle_nombre').blank)
+        self.assertFalse(Proveedor._meta.get_field('calle_numero').blank)
+        self.assertFalse(Proveedor._meta.get_field('localidad').blank)
+        self.assertTrue(Proveedor._meta.get_field('telefono').blank)
+
+    def test_producto_se_relaciona_con_proveedor(self):
+        campo = Producto._meta.get_field('id_proveedor')
+
+        self.assertEqual(campo.related_model, Proveedor)
+        self.assertEqual(campo.db_column, 'id_proveedor')
+        self.assertEqual(campo.remote_field.on_delete, models.PROTECT)
+
+    def test_proveedor_esta_registrado_en_admin(self):
+        self.assertIn(Proveedor, admin.site._registry)
 
     def test_url_de_detalle_del_producto(self):
         url = reverse('detalle_producto', args=[42])
