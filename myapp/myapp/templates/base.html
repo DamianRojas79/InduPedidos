@@ -1,0 +1,18 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}InduPedidos{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'producto/css/productos.css' %}" rel="stylesheet">
+</head>
+<body>
+<header class="site-header"><nav class="navbar navbar-dark" aria-label="Navegación principal"><div class="container gap-3">
+<a class="navbar-brand" href="{% url 'home' %}">InduPedidos</a>
+{% include 'cuenta_nav.html' %}
+</div></nav></header>
+<main class="container py-5">{% block content %}{% endblock %}</main>
+</body>
+</html>
