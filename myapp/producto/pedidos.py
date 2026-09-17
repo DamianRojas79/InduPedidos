@@ -1,0 +1,69 @@
+import json
+from decimal import Decimal, InvalidOperation
+
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from .models import LineaPedido, Pedido, Producto
+
+
+@login_required
+def mis_pedidos(request):
+    pedidos = Pedido.objects.filter(usuario=request.user).prefetch_related('lineas')
+    return render(request, 'producto/mis_pedidos.html', {'pedidos': pedidos})
+
+
+@login_required
+@require_POST
+def crear_pedido(request):
+    es_formulario = request.content_type in ('application/x-www-form-urlencoded', 'multipart/form-data')
+    producto = None
+    try:
+        if es_formulario:
+            items = [{
+                'id': request.POST.get('id', ''),
+                'quantity': int(request.POST.get('quantity', '1')),
+                'color': request.POST.get('color', ''),
+                'size': request.POST.get('size', ''),
+            }]
+        else:
+            items = json.loads(request.body)
+        if not isinstance(items, list) or not 1 <= len(items) <= 100:
+            raise ValueError
+        lineas = []
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError
+            cantidad = item.get('quantity')
+            if type(cantidad) is not int or not 1 <= cantidad <= 999:
+                raise ValueError
+            producto = Producto.objects.get(pk=int(item.get('id', '')))
+            color, talle = item.get('color', ''), item.get('size', '')
+            for valor, opciones in ((color, producto.color), (talle, producto.talle)):
+                if not isinstance(valor, str) or len(valor) > 100:
+                    raise ValueError
+                if valor not in ([str(opcion) for opcion in opciones] if opciones else ['']):
+                    raise ValueError
+            precio = Decimal(str(producto.precio)).quantize(Decimal('0.01'))
+            if not precio.is_finite() or not 0 <= precio < Decimal('1000000000000'):
+                raise ValueError
+            lineas.append(LineaPedido(producto=producto, nombre=producto.nombre,
+                                      precio=precio, cantidad=cantidad, color=color, talle=talle))
+    except (ValueError, TypeError, OverflowError, InvalidOperation, Producto.DoesNotExist):
+        error = 'Revisá los productos, las cantidades, los talles y los colores del pedido.'
+        if es_formulario and producto is not None:
+            return render(request, 'producto/detalle_producto.html',
+                          {'producto': producto, 'error_pedido': error}, status=400)
+        return JsonResponse({'error': error}, status=400)
+    with transaction.atomic():
+        pedido = Pedido.objects.create(usuario=request.user)
+        for linea in lineas:
+            linea.pedido = pedido
+        LineaPedido.objects.bulk_create(lineas)
+    if es_formulario:
+        return redirect('mis_pedidos')
+    return JsonResponse({'url': reverse('mis_pedidos')}, status=201)
