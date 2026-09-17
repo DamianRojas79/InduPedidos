@@ -133,3 +133,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # Media Files Imagenes, videos
 MEDIA_ROOT=BASE_DIR/'media'
 MEDIA_URL='/media/'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'producto'
+LOGOUT_REDIRECT_URL = 'login'
