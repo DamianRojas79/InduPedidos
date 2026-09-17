@@ -1,0 +1,12 @@
+<div class="d-flex flex-wrap align-items-center gap-3">
+{% if user.is_authenticated %}
+    <a class="text-white" href="{% url 'producto' %}">Productos</a>
+    <a class="text-white" href="{% url 'mis_pedidos' %}">Mis pedidos</a>
+    <span class="text-white">{{ user.username }}</span>
+    {% if user.is_staff %}<a class="text-white" href="{% url 'admin:index' %}">Administración</a>{% endif %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button></form>
+{% else %}
+    <a class="text-white" href="{% url 'login' %}">Iniciar sesión</a>
+    <a class="text-white" href="{% url 'registro' %}">Registrarse</a>
+{% endif %}
+</div>
