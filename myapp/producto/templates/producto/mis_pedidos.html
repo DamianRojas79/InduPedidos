@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Mis pedidos | InduPedidos{% endblock %}
+{% block content %}
+<h1>Mis pedidos</h1>
+{% for pedido in pedidos %}
+<article class="card p-4 my-4">
+<h2 class="h4">Pedido #{{ pedido.pk }}</h2>
+<p>{{ pedido.creado|date:'d/m/Y H:i' }}</p>
+<div class="table-responsive"><table class="table">
+<thead><tr><th>Producto</th><th>Color</th><th>Talle</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+<tbody>{% for linea in pedido.lineas.all %}
+<tr><td>{{ linea.nombre }}</td><td>{{ linea.color|default:'—' }}</td><td>{{ linea.talle|default:'—' }}</td><td>{{ linea.cantidad }}</td><td>$ {{ linea.precio|floatformat:2 }}</td><td>$ {{ linea.subtotal|floatformat:2 }}</td></tr>
+{% endfor %}</tbody>
+</table></div>
+<p class="fw-bold mb-0">Total: $ {{ pedido.total|floatformat:2 }}</p>
+</article>
+{% empty %}<p>Todavía no realizaste pedidos.</p>{% endfor %}
+<a class="btn btn-dark" href="{% url 'producto' %}">Ver productos</a>
+{% endblock %}
