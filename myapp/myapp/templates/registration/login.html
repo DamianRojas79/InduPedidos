@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Iniciar sesión | InduPedidos{% endblock %}
+{% block content %}
+<div class="card p-4 mx-auto" style="max-width: 520px">
+<h1>Iniciar sesión</h1>
+<form method="post">{% csrf_token %}
+{{ form.as_p }}
+<input type="hidden" name="next" value="{{ next }}">
+<button class="btn btn-dark" type="submit">Ingresar</button>
+</form>
+<p class="mt-3 mb-0">¿Todavía no tenés usuario? <a href="{% url 'registro' %}">Registrate</a></p>
+</div>
+{% endblock %}
