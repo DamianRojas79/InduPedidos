@@ -8,7 +8,7 @@
     <title>Productos | InduPedidos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'producto/css/productos.css' %}" rel="stylesheet">
+    <link href="{% static 'producto/css/productos.css' %}?v=2" rel="stylesheet">
 </head>
 <body>
     <header class="site-header">
@@ -18,18 +18,14 @@
                     <span class="brand-mark">IP</span>
                     InduPedidos
                 </a>
-                <div class="ms-auto d-flex align-items-center gap-2">
+                <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+                    {% include "cuenta_nav.html" %}
                     <a class="social-link" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                         <i class="bi bi-facebook" aria-hidden="true"></i>
                     </a>
                     <a class="social-link" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                         <i class="bi bi-instagram" aria-hidden="true"></i>
                     </a>
-                    <button class="order-button ms-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#pedido" aria-controls="pedido">
-                        <i class="bi bi-bag" aria-hidden="true"></i>
-                        <span class="d-none d-sm-inline">Mi pedido</span>
-                        <span id="cantidad-pedido" class="badge rounded-pill">0</span>
-                    </button>
                 </div>
             </div>
         </nav>
@@ -112,36 +108,7 @@
         </section>
     </main>
 
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="pedido" aria-labelledby="titulo-pedido">
-        <div class="offcanvas-header">
-            <div>
-                <p class="eyebrow text-dark mb-1">Tu selección</p>
-                <h2 class="offcanvas-title" id="titulo-pedido">Mi pedido</h2>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
-        </div>
-        <div class="offcanvas-body d-flex flex-column">
-            <div id="lista-pedido" class="order-list"></div>
-            <div class="order-summary mt-auto pt-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span>Total estimado</span>
-                    <strong id="total-pedido">$ 0,00</strong>
-                </div>
-                <button id="vaciar-pedido" class="btn btn-outline-secondary w-100" type="button">Vaciar pedido</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="producto-toast" class="toast border-0" role="status" aria-live="polite" aria-atomic="true">
-            <div class="toast-body d-flex align-items-center gap-2">
-                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
-                <span>Producto agregado al pedido.</span>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'producto/js/productos.js' %}"></script>
+    <script src="{% static 'producto/js/productos.js' %}?v=2"></script>
 </body>
 </html>
