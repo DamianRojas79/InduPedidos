@@ -1,9 +1,11 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Count
 
 from .models import Categoria, Producto
 
 # Create your views here.
+@login_required
 def index(request):
     productos = Producto.objects.select_related('categoria').order_by('nombre')
     categorias = (
@@ -21,6 +23,7 @@ def index(request):
     )
 
 
+@login_required
 def detalle(request, producto_id):
     producto = get_object_or_404(
         Producto.objects.select_related('categoria'),
