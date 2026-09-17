@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 #Ckeditor
@@ -72,3 +73,32 @@ class Producto(models.Model):
     class Meta:
         db_table = 'producto'
         verbose_name='Productos'
+
+
+class Pedido(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='pedidos')
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado', '-pk']
+
+    @property
+    def total(self):
+        return sum(linea.subtotal for linea in self.lineas.all())
+
+    def __str__(self):
+        return f'Pedido #{self.pk}'
+
+
+class LineaPedido(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='lineas')
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    nombre = models.CharField(max_length=100)
+    precio = models.DecimalField(max_digits=14, decimal_places=2)
+    cantidad = models.PositiveIntegerField()
+    color = models.CharField(max_length=100, blank=True)
+    talle = models.CharField(max_length=100, blank=True)
+
+    @property
+    def subtotal(self):
+        return self.precio * self.cantidad
