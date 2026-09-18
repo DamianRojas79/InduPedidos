@@ -91,6 +91,7 @@ class Pedido(models.Model):
 
 
 class LineaPedido(models.Model):
+    posicion = models.PositiveIntegerField(default=0)
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='lineas')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=100)
