@@ -221,3 +221,89 @@ class UsuariosYPedidosTests(TestCase):
                                     content_type='application/x-www-form-urlencoded')
         self.assertRedirects(response, reverse('mis_pedidos'))
         self.assertEqual(LineaPedido.objects.get().cantidad, 1)
+
+
+class PlanillaPedidosTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user('planilla')
+        self.otro = get_user_model().objects.create_user('ajeno')
+        self.producto = Producto.objects.create(nombre='Remera', precio=100, color=['Negro'], talle=[38])
+        self.nuevo = Producto.objects.create(nombre='Buzo', precio=200, color=['Azul'], talle=['L'])
+        self.pedido = Pedido.objects.create(usuario=self.usuario)
+        self.filas = [LineaPedido.objects.create(pedido=self.pedido, producto=self.producto,
+                      nombre='Remera', precio=100, cantidad=1, color='Negro', talle='38') for _ in range(3)]
+        self.client.force_login(self.usuario)
+
+    def editar(self, fila, campo, valor):
+        return self.client.post(reverse('modificar_pedido', args=[fila.pk]), {'campo': campo, 'valor': valor})
+
+    def test_planilla_editable_sin_desplegables_ni_importes(self):
+        response = self.client.get(reverse('mis_pedidos'))
+        self.assertContains(response, '<table ', count=1)
+        self.assertContains(response, '<th scope="col">', count=5)
+        for texto in ['<select', '>Guardar<', 'Precio', 'Subtotal', 'Total:', 'Cantidad']:
+            self.assertNotContains(response, texto)
+        self.assertContains(response, '>Eliminar</button>', count=3)
+        self.assertContains(response, 'value="Remera"', count=3)
+        self.assertEqual(list(response.context['lineas']), self.filas)
+
+    def test_editar_texto_libre_y_reordenar(self):
+        fila = self.filas[2]
+        for campo, valor in [('nombre', 'Buzo personalizado'), ('color', 'Verde'), ('talle', 'XXL')]:
+            respuesta = self.editar(fila, campo, valor)
+            self.assertEqual(respuesta.status_code, 200)
+            self.assertEqual(respuesta.json()['valor'], valor)
+        respuesta = self.editar(fila, 'numero', '1')
+        self.assertEqual(respuesta.json()['orden'], [fila.pk, self.filas[0].pk, self.filas[1].pk])
+        fila.refresh_from_db()
+        self.assertEqual((fila.nombre, fila.color, fila.talle), ('Buzo personalizado', 'Verde', 'XXL'))
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.nombre, 'Remera')
+        self.assertEqual(fila.producto, self.producto)
+        self.assertContains(self.client.get(reverse('mis_pedidos')), 'value="Buzo personalizado"')
+
+    def test_eliminar_fila_intermedia_renumera_y_agregar_continua(self):
+        self.client.post(reverse('eliminar_pedido', args=[self.filas[1].pk]))
+        response = self.client.get(reverse('mis_pedidos'))
+        self.assertEqual([(fila.pk, fila.posicion) for fila in response.context['lineas']],
+                         [(self.filas[0].pk, 1), (self.filas[2].pk, 2)])
+        self.client.post(reverse('crear_pedido'), [{'id': self.producto.pk, 'quantity': 1,
+                         'color': 'Negro', 'size': '38'}], content_type='application/json')
+        response = self.client.get(reverse('mis_pedidos'))
+        self.assertEqual([fila.posicion for fila in response.context['lineas']], [1, 2, 3])
+
+    def test_eliminar_ultima_fila_limpia_pedido_y_muestra_estado_vacio(self):
+        for fila in self.filas:
+            self.client.post(reverse('eliminar_pedido', args=[fila.pk]))
+        self.assertFalse(Pedido.objects.filter(pk=self.pedido.pk).exists())
+        self.assertContains(self.client.get(reverse('mis_pedidos')), 'Todavía no realizaste pedidos.')
+
+    def test_cambios_invalidos_no_modifican_pedido(self):
+        for campo, valor in [('numero', '0'), ('numero', '4'), ('numero', 'abc'),
+                             ('nombre', '   '), ('nombre', 'x' * 101),
+                             ('color', 'x' * 101), ('talle', 'x' * 101), ('precio', '1')]:
+            self.assertEqual(self.editar(self.filas[0], campo, valor).status_code, 400)
+        self.filas[0].refresh_from_db()
+        self.assertEqual(self.filas[0].nombre, 'Remera')
+        self.assertEqual(self.filas[0].color, 'Negro')
+
+    def test_editar_una_celda_preserva_las_otras_y_admite_color_talle_vacios(self):
+        for campo in ['color', 'talle']:
+            self.assertEqual(self.editar(self.filas[0], campo, '').status_code, 200)
+        self.filas[0].refresh_from_db()
+        self.assertEqual((self.filas[0].nombre, self.filas[0].color, self.filas[0].talle), ('Remera', '', ''))
+
+    def test_proteccion_de_propietario_metodo_y_csrf(self):
+        from django.test import Client
+        protegido = Client(enforce_csrf_checks=True)
+        protegido.force_login(self.usuario)
+        for nombre in ['modificar_pedido', 'eliminar_pedido']:
+            url = reverse(nombre, args=[self.filas[0].pk])
+            self.assertEqual(self.client.get(url).status_code, 405)
+            self.assertEqual(protegido.post(url).status_code, 403)
+            self.client.force_login(self.otro)
+            self.assertEqual(self.client.post(url).status_code, 404)
+            self.client.logout()
+            self.assertEqual(self.client.post(url).status_code, 302)
+            self.client.force_login(self.usuario)
+        self.assertEqual(LineaPedido.objects.count(), 3)
