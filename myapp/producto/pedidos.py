@@ -37,6 +37,21 @@ def mis_pedidos(request):
 
 @login_required
 @require_POST
+def agregar_pedido(request):
+    with transaction.atomic():
+        get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        filas = list(filas_usuario(request.user))
+        renumerar(filas)
+        pedido = Pedido.objects.create(usuario=request.user)
+        linea = LineaPedido.objects.create(
+            pedido=pedido, posicion=len(filas) + 1,
+            nombre='', color='', talle='', precio=0, cantidad=1,
+        )
+    return redirect(reverse('mis_pedidos') + f'#pedido-{linea.pk}')
+
+
+@login_required
+@require_POST
 def modificar_pedido(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
