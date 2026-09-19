@@ -56,17 +56,21 @@
             });
         });
     });
-    tabla.querySelectorAll('form').forEach(formulario => {
+    document.querySelectorAll('.planilla-pedidos form, #agregar-pedido').forEach(formulario => {
         formulario.addEventListener('submit', async evento => {
             evento.preventDefault();
             await pendientes;
             if (tabla.querySelector('[aria-invalid="true"]')) {
-                estado.textContent = 'Hay cambios sin guardar. Corregí las celdas marcadas o presioná Escape antes de eliminar.';
+                estado.textContent = 'Hay cambios sin guardar. Corregí las celdas marcadas o presioná Escape antes de continuar.';
                 return;
             }
             formulario.submit();
         });
     });
+    const nuevaFila = document.getElementById(window.location.hash.slice(1));
+    if (nuevaFila && tabla.contains(nuevaFila)) {
+        nuevaFila.querySelector('[name="nombre"]').focus();
+    }
     window.addEventListener('beforeunload', evento => {
         if (cantidadPendiente || tabla.querySelector('[aria-invalid="true"]')) {
             evento.preventDefault();

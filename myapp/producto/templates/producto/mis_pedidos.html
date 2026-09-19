@@ -13,7 +13,7 @@
 <thead><tr><th scope="col">Número de pedido</th><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
 <tbody>
 {% for linea in lineas %}
-<tr data-pedido="{{ linea.pk }}" data-url="{% url 'modificar_pedido' linea.pk %}">
+<tr id="pedido-{{ linea.pk }}" data-pedido="{{ linea.pk }}" data-url="{% url 'modificar_pedido' linea.pk %}">
 <td><input aria-label="Número de pedido" type="number" name="numero" min="1" max="{{ lineas|length }}" value="{{ forloop.counter }}" required></td>
 <td><input aria-label="Producto" type="text" name="nombre" value="{{ linea.nombre }}" maxlength="100" required></td>
 <td><input aria-label="Color" type="text" name="color" value="{{ linea.color }}" maxlength="100"></td>
@@ -24,5 +24,11 @@
 </tbody></table></div>
 <script src="{% static 'producto/js/mis_pedidos.js' %}" defer></script>
 {% else %}<p>Todavía no realizaste pedidos.</p>{% endif %}
+<div class="d-flex gap-2 align-items-center">
+<form id="agregar-pedido" method="post" action="{% url 'agregar_pedido' %}">
+{% csrf_token %}
+<button class="btn btn-success" type="submit">Agregar nuevo pedido</button>
+</form>
 <a class="btn btn-dark" href="{% url 'producto' %}">Ver productos</a>
+</div>
 {% endblock %}

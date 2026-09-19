@@ -237,6 +237,46 @@ class PlanillaPedidosTests(TestCase):
     def editar(self, fila, campo, valor):
         return self.client.post(reverse('modificar_pedido', args=[fila.pk]), {'campo': campo, 'valor': valor})
 
+    def test_agregar_fila_en_blanco_al_final_y_editarla(self):
+        response = self.client.post(reverse('agregar_pedido'))
+        fila = LineaPedido.objects.latest('pk')
+        self.assertRedirects(response, reverse('mis_pedidos') + f'#pedido-{fila.pk}')
+        self.assertEqual(fila.pedido.usuario, self.usuario)
+        self.assertEqual(fila.posicion, 4)
+        self.assertIsNone(fila.producto)
+        self.assertEqual((fila.nombre, fila.color, fila.talle), ('', '', ''))
+        for campo, valor in [('nombre', 'Pedido manual'), ('color', 'Rojo'), ('talle', 'XL')]:
+            self.assertEqual(self.editar(fila, campo, valor).status_code, 200)
+        fila.refresh_from_db()
+        self.assertEqual((fila.nombre, fila.color, fila.talle), ('Pedido manual', 'Rojo', 'XL'))
+        self.client.post(reverse('agregar_pedido'))
+        self.assertEqual(LineaPedido.objects.latest('pk').posicion, 5)
+
+    def test_agregar_primer_pedido_solo_para_usuario_actual(self):
+        self.client.force_login(self.otro)
+        pagina = self.client.get(reverse('mis_pedidos'))
+        self.assertContains(pagina, 'Agregar nuevo pedido')
+        self.assertLess(pagina.content.index(b'Agregar nuevo pedido'), pagina.content.index(b'Ver productos'))
+        self.client.post(reverse('agregar_pedido'), {'usuario': self.usuario.pk})
+        fila = LineaPedido.objects.get(pedido__usuario=self.otro)
+        self.assertEqual(fila.posicion, 1)
+        self.assertEqual(LineaPedido.objects.filter(pedido__usuario=self.usuario).count(), 3)
+
+    def test_agregar_pedido_requiere_post_sesion_y_csrf(self):
+        from django.test import Client
+        url = reverse('agregar_pedido')
+        self.assertEqual(self.client.get(url).status_code, 405)
+        protegido = Client(enforce_csrf_checks=True)
+        protegido.force_login(self.usuario)
+        self.assertEqual(protegido.post(url).status_code, 403)
+        pagina = protegido.get(reverse('mis_pedidos'))
+        self.assertEqual(protegido.post(url, {
+            'csrfmiddlewaretoken': pagina.cookies['csrftoken'].value,
+        }).status_code, 302)
+        self.client.logout()
+        self.assertRedirects(self.client.post(url), reverse('login') + '?next=' + url)
+        self.assertEqual(LineaPedido.objects.count(), 4)
+
     def test_planilla_editable_sin_desplegables_ni_importes(self):
         response = self.client.get(reverse('mis_pedidos'))
         self.assertContains(response, '<table ', count=1)
