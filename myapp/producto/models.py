@@ -93,7 +93,7 @@ class Pedido(models.Model):
 class LineaPedido(models.Model):
     posicion = models.PositiveIntegerField(default=0)
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='lineas')
-    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True)
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=14, decimal_places=2)
     cantidad = models.PositiveIntegerField()
