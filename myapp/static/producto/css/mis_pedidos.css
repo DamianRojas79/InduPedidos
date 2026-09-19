@@ -1,0 +1,10 @@
+.planilla-pedidos { background: white; min-width: 680px; }
+.planilla-pedidos th { background: #edf3ef; }
+.planilla-pedidos td { padding: 0; }
+.planilla-pedidos input {
+    display: block; width: 100%; min-width: 80px; padding: .7rem;
+    border: 0; border-radius: 0; background: transparent; color: inherit;
+}
+.planilla-pedidos input:focus { outline: 2px solid #198754; outline-offset: -2px; background: #f3fff7; }
+.planilla-pedidos input[aria-invalid="true"] { background: #fff0f0; outline: 2px solid #dc3545; outline-offset: -2px; }
+.planilla-pedidos .acciones-pedido { padding: .4rem; width: 1%; white-space: nowrap; }
