@@ -1,19 +1,28 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Mis pedidos | InduPedidos{% endblock %}
 {% block content %}
+<link href="{% static 'producto/css/mis_pedidos.css' %}" rel="stylesheet">
 <h1>Mis pedidos</h1>
-{% for pedido in pedidos %}
-<article class="card p-4 my-4">
-<h2 class="h4">Pedido #{{ pedido.pk }}</h2>
-<p>{{ pedido.creado|date:'d/m/Y H:i' }}</p>
-<div class="table-responsive"><table class="table">
-<thead><tr><th>Producto</th><th>Color</th><th>Talle</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
-<tbody>{% for linea in pedido.lineas.all %}
-<tr><td>{{ linea.nombre }}</td><td>{{ linea.color|default:'—' }}</td><td>{{ linea.talle|default:'—' }}</td><td>{{ linea.cantidad }}</td><td>$ {{ linea.precio|floatformat:2 }}</td><td>$ {{ linea.subtotal|floatformat:2 }}</td></tr>
-{% endfor %}</tbody>
-</table></div>
-<p class="fw-bold mb-0">Total: $ {{ pedido.total|floatformat:2 }}</p>
-</article>
-{% empty %}<p>Todavía no realizaste pedidos.</p>{% endfor %}
+<p>Editá directamente las celdas. Los cambios se guardan al salir de la celda o presionar Enter.</p>
+<p id="estado-planilla" role="status" aria-live="polite"></p>
+<noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
+{% if lineas %}
+<div class="table-responsive">
+<table class="table table-bordered align-middle planilla-pedidos">
+<thead><tr><th scope="col">Número de pedido</th><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+<tbody>
+{% for linea in lineas %}
+<tr data-pedido="{{ linea.pk }}" data-url="{% url 'modificar_pedido' linea.pk %}">
+<td><input aria-label="Número de pedido" type="number" name="numero" min="1" max="{{ lineas|length }}" value="{{ forloop.counter }}" required></td>
+<td><input aria-label="Producto" type="text" name="nombre" value="{{ linea.nombre }}" maxlength="100" required></td>
+<td><input aria-label="Color" type="text" name="color" value="{{ linea.color }}" maxlength="100"></td>
+<td><input aria-label="Talle" type="text" name="talle" value="{{ linea.talle }}" maxlength="100"></td>
+<td class="acciones-pedido"><form method="post" action="{% url 'eliminar_pedido' linea.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form></td>
+</tr>
+{% endfor %}
+</tbody></table></div>
+<script src="{% static 'producto/js/mis_pedidos.js' %}" defer></script>
+{% else %}<p>Todavía no realizaste pedidos.</p>{% endif %}
 <a class="btn btn-dark" href="{% url 'producto' %}">Ver productos</a>
 {% endblock %}
