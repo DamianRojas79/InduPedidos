@@ -84,13 +84,16 @@ class Pedido(models.Model):
 
     @property
     def total(self):
-        return sum(linea.subtotal for linea in self.lineas.all())
+        return sum(linea.subtotal for linea in self.lineas.filter(principal__isnull=True))
 
     def __str__(self):
         return f'Pedido #{self.pk}'
 
 
 class LineaPedido(models.Model):
+    principal = models.ForeignKey(
+        'self', on_delete=models.CASCADE, related_name='opciones', null=True, blank=True,
+    )
     posicion = models.PositiveIntegerField(default=0)
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='lineas')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True)
