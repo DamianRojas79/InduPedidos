@@ -1,4 +1,11 @@
-.planilla-pedidos { background: white; min-width: 680px; }
+.contenido-planilla { min-width: 950px; padding-right: 270px; }
+.planilla-pedidos {
+    background: white; width: 100%; border-collapse: collapse;
+    border: 1px solid #adb5bd; --bs-table-border-color: #adb5bd;
+}
+.planilla-pedidos > thead > tr > th,
+.planilla-pedidos > tbody > tr > td { border: 1px solid #adb5bd; }
+.planilla-pedidos .celda-talle { position: relative; }
 .planilla-pedidos th { background: #edf3ef; }
 .planilla-pedidos td { padding: 0; }
 .planilla-pedidos input {
@@ -7,4 +14,11 @@
 }
 .planilla-pedidos input:focus { outline: 2px solid #198754; outline-offset: -2px; background: #f3fff7; }
 .planilla-pedidos input[aria-invalid="true"] { background: #fff0f0; outline: 2px solid #dc3545; outline-offset: -2px; }
-.planilla-pedidos .acciones-pedido { padding: .4rem; width: 1%; white-space: nowrap; }
+.planilla-pedidos .acciones-pedido {
+    position: absolute; left: 100%; top: 0; height: 100%; width: 270px;
+    display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center;
+    gap: .5rem; padding: 0 1rem; white-space: nowrap;
+}
+.acciones-pedido form { margin: 0; flex: 0 0 auto; }
+.planilla-pedidos .fila-opcion { background: #f6f8f7; }
+.numero-opcion { display: block; padding: .7rem 1.2rem; white-space: nowrap; }
