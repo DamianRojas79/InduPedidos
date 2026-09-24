@@ -39,6 +39,7 @@
                         datos.orden.forEach((id, indice) => {
                             const actual = cuerpo.querySelector(`[data-pedido="${id}"]`);
                             cuerpo.append(actual);
+                            cuerpo.querySelectorAll(`[data-principal="${id}"]`).forEach(opcion => cuerpo.append(opcion));
                             const numero = actual.querySelector('[name="numero"]');
                             numero.value = String(indice + 1);
                             numero.dataset.guardado = numero.value;
