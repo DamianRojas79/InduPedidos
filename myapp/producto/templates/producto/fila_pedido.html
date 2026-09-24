@@ -1,0 +1,9 @@
+<tr id="pedido-{{ linea.pk }}" data-pedido="{{ linea.pk }}"{% if linea.principal_id %} data-principal="{{ linea.principal_id }}" class="fila-opcion"{% endif %} data-url="{% url 'modificar_pedido' linea.pk %}">
+<td>{% if linea.principal_id %}<span class="numero-opcion">Opción {{ numero }}</span>{% else %}<input aria-label="Número de pedido" type="number" name="numero" min="1" max="{{ lineas|length }}" value="{{ numero }}" required>{% endif %}</td>
+<td><input aria-label="Producto" type="text" name="nombre" value="{{ linea.nombre }}" maxlength="100" required></td>
+<td><input aria-label="Color" type="text" name="color" value="{{ linea.color }}" maxlength="100"></td>
+<td class="celda-talle"><input aria-label="Talle" type="text" name="talle" value="{{ linea.talle }}" maxlength="100">
+<div class="acciones-pedido"><form method="post" action="{% url 'eliminar_pedido' linea.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form>{% if not linea.principal_id %}
+<form method="post" action="{% url 'agregar_opcion' linea.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" type="submit"{% if linea.opciones.all|length >= 3 %} disabled{% endif %}>Agregar opción</button></form>
+{% endif %}</div></td>
+</tr>
