@@ -280,7 +280,7 @@ class PlanillaPedidosTests(TestCase):
     def test_planilla_editable_sin_desplegables_ni_importes(self):
         response = self.client.get(reverse('mis_pedidos'))
         self.assertContains(response, '<table ', count=1)
-        self.assertContains(response, '<th scope="col">', count=5)
+        self.assertContains(response, '<th scope="col">', count=4)
         for texto in ['<select', '>Guardar<', 'Precio', 'Subtotal', 'Total:', 'Cantidad']:
             self.assertNotContains(response, texto)
         self.assertContains(response, '>Eliminar</button>', count=3)
@@ -347,3 +347,80 @@ class PlanillaPedidosTests(TestCase):
             self.assertEqual(self.client.post(url).status_code, 302)
             self.client.force_login(self.usuario)
         self.assertEqual(LineaPedido.objects.count(), 3)
+
+
+class OpcionesPedidoTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user('opciones')
+        self.client.force_login(self.usuario)
+        self.pedido = Pedido.objects.create(usuario=self.usuario)
+        self.principal = LineaPedido.objects.create(
+            pedido=self.pedido, nombre='Zapatilla', precio=100, cantidad=1, posicion=1)
+        self.url = reverse('agregar_opcion', args=[self.principal.pk])
+
+    def agregar(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+        return self.principal.opciones.latest('pk')
+
+    def test_limite_edicion_y_botones_solo_en_principal(self):
+        opciones = [self.agregar() for _ in range(3)]
+        self.assertEqual(self.client.post(self.url).status_code, 400)
+        self.assertEqual(self.principal.opciones.count(), 3)
+        pagina = self.client.get(reverse('mis_pedidos'))
+        self.assertContains(pagina, '>Agregar opción</button>', count=1)
+        self.assertContains(pagina, '>Eliminar</button>', count=4)
+        for numero in range(1, 4):
+            self.assertContains(pagina, f'Opción {numero}')
+        for campo, valor in [('nombre', 'Ojota'), ('color', 'Blanco'), ('talle', '40')]:
+            response = self.client.post(reverse('modificar_pedido', args=[opciones[0].pk]),
+                                        {'campo': campo, 'valor': valor})
+            self.assertEqual(response.status_code, 200)
+        opciones[0].refresh_from_db()
+        self.assertEqual((opciones[0].nombre, opciones[0].color, opciones[0].talle), ('Ojota', 'Blanco', '40'))
+        self.assertEqual(self.client.post(reverse('modificar_pedido', args=[opciones[0].pk]),
+                                         {'campo': 'numero', 'valor': '1'}).status_code, 400)
+        self.assertEqual(self.client.post(reverse('agregar_opcion', args=[opciones[0].pk])).status_code, 404)
+        opciones[0].precio = 50
+        opciones[0].save()
+        self.assertEqual(self.pedido.total, 100)
+
+    def test_eliminar_renumera_y_permite_reemplazar(self):
+        primera, segunda, tercera = [self.agregar() for _ in range(3)]
+        self.client.post(reverse('eliminar_pedido', args=[segunda.pk]))
+        self.assertEqual(list(self.principal.opciones.order_by('posicion').values_list('pk', 'posicion')),
+                         [(primera.pk, 1), (tercera.pk, 2)])
+        self.assertEqual(self.agregar().posicion, 3)
+        self.client.post(reverse('eliminar_pedido', args=[self.principal.pk]))
+        self.assertFalse(LineaPedido.objects.exists())
+        self.assertFalse(Pedido.objects.exists())
+
+    def test_numeracion_principal_independiente_y_orden_visual(self):
+        opcion = self.agregar()
+        self.client.post(reverse('agregar_pedido'))
+        nuevo = LineaPedido.objects.latest('pk')
+        self.assertEqual(nuevo.posicion, 2)
+        response = self.client.post(reverse('modificar_pedido', args=[nuevo.pk]), {'campo': 'numero', 'valor': '1'})
+        self.assertEqual(response.json()['orden'], [nuevo.pk, self.principal.pk])
+        pagina = self.client.get(reverse('mis_pedidos')).content.decode()
+        self.assertLess(pagina.index(f'id="pedido-{nuevo.pk}"'), pagina.index(f'id="pedido-{self.principal.pk}"'))
+        self.assertLess(pagina.index(f'id="pedido-{self.principal.pk}"'), pagina.index(f'id="pedido-{opcion.pk}"'))
+        opcion.refresh_from_db()
+        self.assertEqual(opcion.posicion, 1)
+
+    def test_protecciones(self):
+        from django.test import Client
+        opcion = self.agregar()
+        urls = [self.url, reverse('modificar_pedido', args=[opcion.pk]), reverse('eliminar_pedido', args=[opcion.pk])]
+        protegido = Client(enforce_csrf_checks=True)
+        protegido.force_login(self.usuario)
+        for url in urls:
+            self.assertEqual(self.client.get(url).status_code, 405)
+            self.assertEqual(protegido.post(url).status_code, 403)
+        otro = get_user_model().objects.create_user('otro')
+        self.client.force_login(otro)
+        for url in urls:
+            self.assertEqual(self.client.post(url).status_code, 404)
+        self.client.logout()
+        for url in urls:
+            self.assertEqual(self.client.post(url).status_code, 302)
