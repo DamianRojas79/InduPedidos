@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model
@@ -13,13 +14,15 @@ from .models import LineaPedido, Pedido, Producto
 
 
 def filas_usuario(usuario):
-    return LineaPedido.objects.filter(pedido__usuario=usuario).order_by('posicion', 'pk')
+    return LineaPedido.objects.filter(pedido__usuario=usuario, principal__isnull=True).order_by('posicion', 'pk')
 
 
 def planilla(request, error=None, status=200):
     return render(request, 'producto/mis_pedidos.html', {
         'pedidos': Pedido.objects.filter(usuario=request.user),
-        'lineas': filas_usuario(request.user).select_related('producto'),
+        'lineas': filas_usuario(request.user).select_related('producto').prefetch_related(
+            Prefetch('opciones', queryset=LineaPedido.objects.order_by('posicion', 'pk'))
+        ),
         'error': error,
     }, status=status)
 
@@ -52,16 +55,34 @@ def agregar_pedido(request):
 
 @login_required
 @require_POST
+def agregar_opcion(request, linea_id):
+    with transaction.atomic():
+        get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        principal = get_object_or_404(filas_usuario(request.user), pk=linea_id)
+        cantidad = principal.opciones.count()
+        if cantidad >= 3:
+            return planilla(request, error='Cada pedido admite hasta 3 opciones de compra.', status=400)
+        opcion = LineaPedido.objects.create(
+            pedido=principal.pedido, principal=principal, posicion=cantidad + 1,
+            nombre='', color='', talle='', precio=0, cantidad=1,
+        )
+    return redirect(reverse('mis_pedidos') + f'#pedido-{opcion.pk}')
+
+
+@login_required
+@require_POST
 def modificar_pedido(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        linea = get_object_or_404(filas_usuario(request.user), pk=linea_id)
+        linea = get_object_or_404(LineaPedido.objects.filter(pedido__usuario=request.user), pk=linea_id)
         filas = list(filas_usuario(request.user))
         campo = request.POST.get('campo')
         valor = request.POST.get('valor', '').strip()
         if campo not in ('numero', 'nombre', 'color', 'talle'):
             return JsonResponse({'error': 'La columna no es válida.'}, status=400)
         if campo == 'numero':
+            if linea.principal_id:
+                return JsonResponse({'error': 'Las opciones se numeran automáticamente.'}, status=400)
             try:
                 numero = int(valor)
                 if not 1 <= numero <= len(filas):
@@ -85,9 +106,12 @@ def modificar_pedido(request, linea_id):
 def eliminar_pedido(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        linea = get_object_or_404(filas_usuario(request.user), pk=linea_id)
+        linea = get_object_or_404(LineaPedido.objects.filter(pedido__usuario=request.user), pk=linea_id)
         pedido = linea.pedido
+        principal = linea.principal
         linea.delete()
+        if principal:
+            renumerar(list(principal.opciones.order_by('posicion', 'pk')))
         if not pedido.lineas.exists():
             pedido.delete()
         renumerar(list(filas_usuario(request.user)))
