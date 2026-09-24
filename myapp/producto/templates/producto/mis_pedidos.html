@@ -2,26 +2,25 @@
 {% load static %}
 {% block title %}Mis pedidos | InduPedidos{% endblock %}
 {% block content %}
-<link href="{% static 'producto/css/mis_pedidos.css' %}" rel="stylesheet">
+<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260922" rel="stylesheet">
 <h1>Mis pedidos</h1>
+{% if error %}<p class="alert alert-danger" role="alert">{{ error }}</p>{% endif %}
 <p>Editá directamente las celdas. Los cambios se guardan al salir de la celda o presionar Enter.</p>
 <p id="estado-planilla" role="status" aria-live="polite"></p>
 <noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
 {% if lineas %}
 <div class="table-responsive">
+<div class="contenido-planilla">
 <table class="table table-bordered align-middle planilla-pedidos">
-<thead><tr><th scope="col">Número de pedido</th><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+<thead><tr><th scope="col">Número de pedido</th><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th></tr></thead>
 <tbody>
 {% for linea in lineas %}
-<tr id="pedido-{{ linea.pk }}" data-pedido="{{ linea.pk }}" data-url="{% url 'modificar_pedido' linea.pk %}">
-<td><input aria-label="Número de pedido" type="number" name="numero" min="1" max="{{ lineas|length }}" value="{{ forloop.counter }}" required></td>
-<td><input aria-label="Producto" type="text" name="nombre" value="{{ linea.nombre }}" maxlength="100" required></td>
-<td><input aria-label="Color" type="text" name="color" value="{{ linea.color }}" maxlength="100"></td>
-<td><input aria-label="Talle" type="text" name="talle" value="{{ linea.talle }}" maxlength="100"></td>
-<td class="acciones-pedido"><form method="post" action="{% url 'eliminar_pedido' linea.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form></td>
-</tr>
+{% include 'producto/fila_pedido.html' with numero=forloop.counter %}
+{% for opcion in linea.opciones.all %}
+{% include 'producto/fila_pedido.html' with linea=opcion numero=forloop.counter %}
 {% endfor %}
-</tbody></table></div>
+{% endfor %}
+</tbody></table></div></div>
 <script src="{% static 'producto/js/mis_pedidos.js' %}" defer></script>
 {% else %}<p>Todavía no realizaste pedidos.</p>{% endif %}
 <div class="d-flex gap-2 align-items-center">
