@@ -2,7 +2,7 @@
 {% if user.is_authenticated %}
     <a class="text-white" href="{% url 'producto' %}">Productos</a>
     {% if user.is_staff %}
-        <span class="text-white-50" role="link" aria-disabled="true">Gestión de pedidos</span>
+        <a class="text-white" href="{% url 'gestion_pedidos' %}">Gestión de pedidos</a>
         <span class="text-white-50" role="link" aria-disabled="true">Ver pedidos</span>
         <a class="text-white" href="{% url 'admin:index' %}">Administración</a>
     {% else %}

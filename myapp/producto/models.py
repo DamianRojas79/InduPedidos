@@ -75,6 +75,40 @@ class Producto(models.Model):
         verbose_name='Productos'
 
 
+class PedidoGeneral(models.Model):
+    class Estado(models.TextChoices):
+        ABIERTO = 'abierto', 'Abierto'
+        CERRADO = 'cerrado', 'Cerrado'
+
+    id = models.AutoField(primary_key=True)
+    descripcion = models.CharField('Descripción', max_length=200)
+    estado = models.CharField(max_length=7, choices=Estado.choices, default=Estado.ABIERTO)
+    fecha_creacion = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    fecha_entrega = models.DateField('Fecha de entrega', null=True, blank=True)
+
+    class Meta:
+        db_table = 'pedido'
+        ordering = ['-pk']
+        verbose_name = 'Pedido general'
+        verbose_name_plural = 'Pedidos generales'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['estado'], condition=models.Q(estado='abierto'),
+                name='pedido_unico_abierto',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(estado__in=['abierto', 'cerrado']),
+                name='pedido_estado_valido',
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(descripcion=''), name='pedido_descripcion_no_vacia',
+            ),
+        ]
+
+    def __str__(self):
+        return self.descripcion
+
+
 class Pedido(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='pedidos')
     creado = models.DateTimeField(auto_now_add=True)

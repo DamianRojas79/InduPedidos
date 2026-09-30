@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from producto import pedidos
+from producto import gestion_pedidos, pedidos
 from django.urls import path, include
 from django.views.generic import RedirectView
 from . import views
@@ -38,6 +38,10 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('mis-pedidos/', pedidos.mis_pedidos, name='mis_pedidos'),
+    path('gestion-pedidos/', gestion_pedidos.gestion_pedidos, name='gestion_pedidos'),
+    path('gestion-pedidos/crear/', gestion_pedidos.crear_pedido_general, name='crear_pedido_general'),
+    path('gestion-pedidos/<int:pedido_id>/cerrar/', gestion_pedidos.cerrar_pedido_general,
+         name='cerrar_pedido_general'),
     path('pedidos/<int:linea_id>/opciones/agregar/', pedidos.agregar_opcion, name='agregar_opcion'),
     path('pedidos/agregar/', pedidos.agregar_pedido, name='agregar_pedido'),
     path('pedidos/<int:linea_id>/modificar/', pedidos.modificar_pedido, name='modificar_pedido'),

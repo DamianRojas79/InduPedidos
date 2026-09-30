@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de pedidos | InduPedidos{% endblock %}
+{% block content %}
+<h1 class="mb-4">Gestión de pedidos</h1>
+{% for message in messages %}
+<p class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}" role="status">{{ message }}</p>
+{% endfor %}
+{% if ultimo_pedido %}
+<section class="card mb-4" aria-labelledby="descripcion-pedido">
+    <div class="card-body">
+        <p class="text-secondary">Último pedido creado</p>
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+            <h2 id="descripcion-pedido" class="h4 mb-0 text-break">{{ ultimo_pedido.descripcion }}</h2>
+            {% if ultimo_pedido.estado == 'abierto' %}
+            <form method="post" action="{% url 'cerrar_pedido_general' ultimo_pedido.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-danger" type="submit">Cerrar pedido</button>
+            </form>
+            {% endif %}
+        </div>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Estado</dt>
+            <dd class="col-sm-9">{{ ultimo_pedido.get_estado_display }}</dd>
+            <dt class="col-sm-3">Fecha de creación</dt>
+            <dd class="col-sm-9">{{ ultimo_pedido.fecha_creacion|date:'d/m/Y H:i' }}</dd>
+            <dt class="col-sm-3">Fecha de entrega</dt>
+            <dd class="col-sm-9">{% if ultimo_pedido.fecha_entrega %}{{ ultimo_pedido.fecha_entrega|date:'d/m/Y' }}{% else %}Sin fecha de entrega{% endif %}</dd>
+        </dl>
+    </div>
+</section>
+{% else %}
+<p class="alert alert-info">Todavía no hay pedidos creados.</p>
+{% endif %}
+{% if puede_crear %}
+<a class="btn btn-success" href="{% url 'crear_pedido_general' %}">Crear nuevo pedido</a>
+{% else %}
+<button class="btn btn-success" type="button" disabled aria-describedby="ayuda-nuevo-pedido">Crear nuevo pedido</button>
+<p class="text-secondary mt-2" id="ayuda-nuevo-pedido">Cerrá el último pedido para poder crear uno nuevo.</p>
+{% endif %}
+{% endblock %}

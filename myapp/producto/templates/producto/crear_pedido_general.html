@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Crear nuevo pedido | InduPedidos{% endblock %}
+{% block content %}
+<h1 class="mb-4">Crear nuevo pedido</h1>
+<div class="row"><div class="col-lg-6">
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.descripcion.id_for_label }}">Descripción (obligatorio)</label>
+        {{ form.descripcion }}
+        {{ form.descripcion.errors }}
+    </div>
+    <div class="mb-4">
+        <label class="form-label" for="{{ form.fecha_entrega.id_for_label }}">Fecha de entrega (opcional)</label>
+        {{ form.fecha_entrega }}
+        {{ form.fecha_entrega.errors }}
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success" type="submit">Crear pedido</button>
+        <a class="btn btn-outline-secondary" href="{% url 'gestion_pedidos' %}">Cancelar</a>
+    </div>
+</form>
+</div></div>
+{% endblock %}
