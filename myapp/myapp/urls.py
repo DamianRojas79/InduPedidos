@@ -40,6 +40,8 @@ urlpatterns = [
     path('mis-pedidos/', pedidos.mis_pedidos, name='mis_pedidos'),
     path('gestion-pedidos/', gestion_pedidos.gestion_pedidos, name='gestion_pedidos'),
     path('gestion-pedidos/crear/', gestion_pedidos.crear_pedido_general, name='crear_pedido_general'),
+    path('gestion-pedidos/<int:pedido_id>/modificar/', gestion_pedidos.modificar_pedido_general,
+         name='modificar_pedido_general'),
     path('gestion-pedidos/<int:pedido_id>/cerrar/', gestion_pedidos.cerrar_pedido_general,
          name='cerrar_pedido_general'),
     path('pedidos/<int:linea_id>/opciones/agregar/', pedidos.agregar_opcion, name='agregar_opcion'),
