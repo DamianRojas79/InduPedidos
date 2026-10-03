@@ -75,10 +75,11 @@
                 {% endif %}
 
 
-                    <button class="btn add-product" type="submit" data-product-id="{{ producto.id }}">
+                    <button class="btn add-product" type="submit" data-product-id="{{ producto.id }}"{% if not pedido_abierto %} disabled{% endif %}>
                         <i class="bi bi-bag-plus me-2"></i>Añadir al pedido
                     </button>
                 </form>
+                {% if not pedido_abierto %}<p class="mt-2" role="status">No hay un pedido general abierto. Podrás cargar pedidos cuando el administrador cree uno nuevo.</p>{% endif %}
             </div>
         </article>
 
