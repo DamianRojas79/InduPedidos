@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -31,6 +32,7 @@ def gestion_pedidos(request):
     ultimo = PedidoGeneral.objects.first()
     return render(request, 'producto/gestion_pedidos.html', {
         'ultimo_pedido': ultimo,
+        'pedidos_generales': PedidoGeneral.objects.all(),
         'puede_crear': puede_crear(ultimo),
     })
 
@@ -57,6 +59,31 @@ def crear_pedido_general(request):
         messages.success(request, 'Pedido creado correctamente.')
         return redirect('gestion_pedidos')
     return render(request, 'producto/crear_pedido_general.html', {'form': form})
+
+
+@administrador_required
+@require_POST
+def modificar_pedido_general(request, pedido_id):
+    with transaction.atomic():
+        ultimo = PedidoGeneral.objects.select_for_update().first()
+        if ultimo is None or ultimo.pk != pedido_id or ultimo.estado != PedidoGeneral.Estado.ABIERTO:
+            return JsonResponse({'error': 'Solo se puede editar el último pedido abierto.'}, status=409)
+        campo = request.POST.get('campo')
+        if campo not in ('descripcion', 'fecha_entrega'):
+            return JsonResponse({'error': 'La columna no es editable.'}, status=400)
+        datos = {
+            'descripcion': ultimo.descripcion,
+            'fecha_entrega': ultimo.fecha_entrega or '',
+        }
+        datos[campo] = request.POST.get('valor', '').strip()
+        form = PedidoGeneralForm(datos, instance=ultimo)
+        if not form.is_valid():
+            return JsonResponse({'error': ' '.join(error for errores in form.errors.values() for error in errores)}, status=400)
+        ultimo = form.save()
+        valor = getattr(ultimo, campo)
+        if campo == 'fecha_entrega':
+            valor = valor.isoformat() if valor else ''
+    return JsonResponse({'valor': valor})
 
 
 @administrador_required
