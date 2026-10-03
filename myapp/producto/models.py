@@ -110,6 +110,10 @@ class PedidoGeneral(models.Model):
 
 
 class Pedido(models.Model):
+    pedido_general = models.ForeignKey(
+        PedidoGeneral, on_delete=models.PROTECT, related_name='pedidos_clientes',
+        null=True, blank=True,
+    )
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='pedidos')
     creado = models.DateTimeField(auto_now_add=True)
 
