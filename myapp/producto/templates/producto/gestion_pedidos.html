@@ -1,35 +1,45 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Gestión de pedidos | InduPedidos{% endblock %}
 {% block content %}
+<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
 <h1 class="mb-4">Gestión de pedidos</h1>
 {% for message in messages %}
 <p class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}" role="status">{{ message }}</p>
 {% endfor %}
-{% if ultimo_pedido %}
-<section class="card mb-4" aria-labelledby="descripcion-pedido">
-    <div class="card-body">
-        <p class="text-secondary">Último pedido creado</p>
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-            <h2 id="descripcion-pedido" class="h4 mb-0 text-break">{{ ultimo_pedido.descripcion }}</h2>
-            {% if ultimo_pedido.estado == 'abierto' %}
-            <form method="post" action="{% url 'cerrar_pedido_general' ultimo_pedido.pk %}">
-                {% csrf_token %}
-                <button class="btn btn-outline-danger" type="submit">Cerrar pedido</button>
-            </form>
-            {% endif %}
-        </div>
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Estado</dt>
-            <dd class="col-sm-9">{{ ultimo_pedido.get_estado_display }}</dd>
-            <dt class="col-sm-3">Fecha de creación</dt>
-            <dd class="col-sm-9">{{ ultimo_pedido.fecha_creacion|date:'d/m/Y H:i' }}</dd>
-            <dt class="col-sm-3">Fecha de entrega</dt>
-            <dd class="col-sm-9">{% if ultimo_pedido.fecha_entrega %}{{ ultimo_pedido.fecha_entrega|date:'d/m/Y' }}{% else %}Sin fecha de entrega{% endif %}</dd>
-        </dl>
-    </div>
-</section>
+{% if ultimo_pedido.estado == 'abierto' %}
+<p>Editá la descripción y la fecha de entrega del primer pedido. Los cambios se guardan al salir de la celda o presionar Enter.</p>
+<p id="estado-planilla" role="status" aria-live="polite"></p>
+<noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
+{% endif %}
+<div class="table-responsive mb-4">
+<div class="contenido-planilla">
+<table class="table table-bordered align-middle planilla-pedidos planilla-generales">
+<thead><tr><th scope="col">Descripción</th><th scope="col">Estado</th><th scope="col">Fecha creación</th><th scope="col">Fecha entrega</th></tr></thead>
+<tbody>
+{% for pedido in pedidos_generales %}
+<tr id="pedido-{{ pedido.pk }}" data-pedido="{{ pedido.pk }}" data-url="{% url 'modificar_pedido_general' pedido.pk %}">
+{% if forloop.first and pedido.estado == 'abierto' %}
+<td><input aria-label="Descripción" type="text" name="descripcion" value="{{ pedido.descripcion }}" maxlength="200" required></td>
+<td><span class="valor-pedido">{{ pedido.get_estado_display }}</span></td>
+<td><span class="valor-pedido">{{ pedido.fecha_creacion|date:'d/m/Y H:i' }}</span></td>
+<td class="celda-talle"><input aria-label="Fecha entrega" type="date" name="fecha_entrega" value="{{ pedido.fecha_entrega|date:'Y-m-d' }}">
+<div class="acciones-pedido"><form method="post" action="{% url 'cerrar_pedido_general' pedido.pk %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit">Cerrar pedido</button></form></div>
+</td>
 {% else %}
-<p class="alert alert-info">Todavía no hay pedidos creados.</p>
+<td><span class="valor-pedido text-break">{{ pedido.descripcion }}</span></td>
+<td><span class="valor-pedido">{{ pedido.get_estado_display }}</span></td>
+<td><span class="valor-pedido">{{ pedido.fecha_creacion|date:'d/m/Y H:i' }}</span></td>
+<td><span class="valor-pedido">{{ pedido.fecha_entrega|date:'d/m/Y'|default:'Sin fecha de entrega' }}</span></td>
+{% endif %}
+</tr>
+{% empty %}
+<tr><td colspan="4"><span class="valor-pedido">Todavía no hay pedidos creados.</span></td></tr>
+{% endfor %}
+</tbody></table>
+</div></div>
+{% if ultimo_pedido.estado == 'abierto' %}
+<script src="{% static 'producto/js/mis_pedidos.js' %}?v=20260930" defer></script>
 {% endif %}
 {% if puede_crear %}
 <a class="btn btn-success" href="{% url 'crear_pedido_general' %}">Crear nuevo pedido</a>
