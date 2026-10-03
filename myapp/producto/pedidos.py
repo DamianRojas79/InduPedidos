@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -10,17 +11,42 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .models import LineaPedido, Pedido, Producto
+from .models import LineaPedido, Pedido, PedidoGeneral, Producto
 
 
-def filas_usuario(usuario):
-    return LineaPedido.objects.filter(pedido__usuario=usuario, principal__isnull=True).order_by('posicion', 'pk')
+def filas_usuario(usuario, pedido_general):
+    if pedido_general is None:
+        return LineaPedido.objects.none()
+    return LineaPedido.objects.filter(
+        pedido__usuario=usuario, pedido__pedido_general=pedido_general, principal__isnull=True,
+    ).order_by('posicion', 'pk')
+
+
+def pedido_abierto_required(view):
+    @wraps(view)
+    def protegida(request, *args, **kwargs):
+        # El cierre del administrador usa el mismo bloqueo. Una carga iniciada
+        # antes del cierre termina primero; después del cierre no se puede editar.
+        with transaction.atomic():
+            pedido_general = PedidoGeneral.objects.select_for_update().filter(
+                estado=PedidoGeneral.Estado.ABIERTO,
+            ).first()
+            if pedido_general is None:
+                error = 'No hay un pedido general abierto. Esperá a que el administrador cree uno nuevo.'
+                if view.__name__ == 'modificar_pedido' or request.content_type == 'application/json':
+                    return JsonResponse({'error': error}, status=409)
+                return planilla(request, error=error, status=409)
+            request.pedido_general = pedido_general
+            return view(request, *args, **kwargs)
+    return protegida
 
 
 def planilla(request, error=None, status=200):
+    pedido_general = PedidoGeneral.objects.filter(estado=PedidoGeneral.Estado.ABIERTO).first()
     return render(request, 'producto/mis_pedidos.html', {
-        'pedidos': Pedido.objects.filter(usuario=request.user),
-        'lineas': filas_usuario(request.user).select_related('producto').prefetch_related(
+        'pedido_general': pedido_general,
+        'pedidos': Pedido.objects.filter(usuario=request.user, pedido_general=pedido_general) if pedido_general else Pedido.objects.none(),
+        'lineas': filas_usuario(request.user, pedido_general).select_related('producto').prefetch_related(
             Prefetch('opciones', queryset=LineaPedido.objects.order_by('posicion', 'pk'))
         ),
         'error': error,
@@ -40,12 +66,13 @@ def mis_pedidos(request):
 
 @login_required
 @require_POST
+@pedido_abierto_required
 def agregar_pedido(request):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        filas = list(filas_usuario(request.user))
+        filas = list(filas_usuario(request.user, request.pedido_general))
         renumerar(filas)
-        pedido = Pedido.objects.create(usuario=request.user)
+        pedido = Pedido.objects.create(usuario=request.user, pedido_general=request.pedido_general)
         linea = LineaPedido.objects.create(
             pedido=pedido, posicion=len(filas) + 1,
             nombre='', color='', talle='', precio=0, cantidad=1,
@@ -55,10 +82,11 @@ def agregar_pedido(request):
 
 @login_required
 @require_POST
+@pedido_abierto_required
 def agregar_opcion(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        principal = get_object_or_404(filas_usuario(request.user), pk=linea_id)
+        principal = get_object_or_404(filas_usuario(request.user, request.pedido_general), pk=linea_id)
         cantidad = principal.opciones.count()
         if cantidad >= 3:
             return planilla(request, error='Cada pedido admite hasta 3 opciones de compra.', status=400)
@@ -71,11 +99,15 @@ def agregar_opcion(request, linea_id):
 
 @login_required
 @require_POST
+@pedido_abierto_required
 def modificar_pedido(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        linea = get_object_or_404(LineaPedido.objects.filter(pedido__usuario=request.user), pk=linea_id)
-        filas = list(filas_usuario(request.user))
+        linea = get_object_or_404(
+            LineaPedido.objects.filter(pedido__usuario=request.user, pedido__pedido_general=request.pedido_general),
+            pk=linea_id,
+        )
+        filas = list(filas_usuario(request.user, request.pedido_general))
         campo = request.POST.get('campo')
         valor = request.POST.get('valor', '').strip()
         if campo not in ('numero', 'nombre', 'color', 'talle'):
@@ -103,10 +135,14 @@ def modificar_pedido(request, linea_id):
 
 @login_required
 @require_POST
+@pedido_abierto_required
 def eliminar_pedido(request, linea_id):
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        linea = get_object_or_404(LineaPedido.objects.filter(pedido__usuario=request.user), pk=linea_id)
+        linea = get_object_or_404(
+            LineaPedido.objects.filter(pedido__usuario=request.user, pedido__pedido_general=request.pedido_general),
+            pk=linea_id,
+        )
         pedido = linea.pedido
         principal = linea.principal
         linea.delete()
@@ -114,12 +150,13 @@ def eliminar_pedido(request, linea_id):
             renumerar(list(principal.opciones.order_by('posicion', 'pk')))
         if not pedido.lineas.exists():
             pedido.delete()
-        renumerar(list(filas_usuario(request.user)))
+        renumerar(list(filas_usuario(request.user, request.pedido_general)))
     return redirect('mis_pedidos')
 
 
 @login_required
 @require_POST
+@pedido_abierto_required
 def crear_pedido(request):
     es_formulario = request.content_type in ('application/x-www-form-urlencoded', 'multipart/form-data')
     producto = None
@@ -158,15 +195,15 @@ def crear_pedido(request):
         error = 'Revisá los productos, las cantidades, los talles y los colores del pedido.'
         if es_formulario and producto is not None:
             return render(request, 'producto/detalle_producto.html',
-                          {'producto': producto, 'error_pedido': error}, status=400)
+                          {'producto': producto, 'error_pedido': error, 'pedido_abierto': True}, status=400)
         return JsonResponse({'error': error}, status=400)
     with transaction.atomic():
         get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        existentes = list(filas_usuario(request.user))
+        existentes = list(filas_usuario(request.user, request.pedido_general))
         renumerar(existentes)
         for posicion, linea in enumerate(lineas, len(existentes) + 1):
             linea.posicion = posicion
-        pedido = Pedido.objects.create(usuario=request.user)
+        pedido = Pedido.objects.create(usuario=request.user, pedido_general=request.pedido_general)
         for linea in lineas:
             linea.pedido = pedido
         LineaPedido.objects.bulk_create(lineas)
