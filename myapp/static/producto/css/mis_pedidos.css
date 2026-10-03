@@ -22,3 +22,5 @@
 .acciones-pedido form { margin: 0; flex: 0 0 auto; }
 .planilla-pedidos .fila-opcion { background: #f6f8f7; }
 .numero-opcion { display: block; padding: .7rem 1.2rem; white-space: nowrap; }
+.planilla-pedidos .valor-pedido { display: block; padding: .7rem; }
+.planilla-generales th:first-child { width: 40%; }
