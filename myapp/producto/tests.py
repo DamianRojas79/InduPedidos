@@ -81,11 +81,12 @@ class CategoriaModelTests(SimpleTestCase):
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from .models import Pedido, LineaPedido
+from .models import Pedido, PedidoGeneral, LineaPedido
 
 
 class UsuariosYPedidosTests(TestCase):
     def setUp(self):
+        self.general = PedidoGeneral.objects.create(descripcion='Octubre')
         self.usuario = get_user_model().objects.create_user('cliente', password='ClaveSegura-984!')
         self.otro = get_user_model().objects.create_user('otro', password='ClaveSegura-984!')
         self.producto = Producto.objects.create(nombre='Remera', desc='Algodón', precio=1250.50,
@@ -127,8 +128,8 @@ class UsuariosYPedidosTests(TestCase):
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_cada_usuario_solo_ve_sus_pedidos(self):
-        propio = Pedido.objects.create(usuario=self.usuario)
-        ajeno = Pedido.objects.create(usuario=self.otro)
+        propio = Pedido.objects.create(usuario=self.usuario, pedido_general=self.general)
+        ajeno = Pedido.objects.create(usuario=self.otro, pedido_general=self.general)
         LineaPedido.objects.create(pedido=ajeno, producto=self.producto, nombre='Producto privado', precio=10, cantidad=1)
         self.client.force_login(self.usuario)
         response = self.client.get(reverse('mis_pedidos'), {'usuario': self.otro.pk})
@@ -225,11 +226,12 @@ class UsuariosYPedidosTests(TestCase):
 
 class PlanillaPedidosTests(TestCase):
     def setUp(self):
+        self.general = PedidoGeneral.objects.create(descripcion='Octubre')
         self.usuario = get_user_model().objects.create_user('planilla')
         self.otro = get_user_model().objects.create_user('ajeno')
         self.producto = Producto.objects.create(nombre='Remera', precio=100, color=['Negro'], talle=[38])
         self.nuevo = Producto.objects.create(nombre='Buzo', precio=200, color=['Azul'], talle=['L'])
-        self.pedido = Pedido.objects.create(usuario=self.usuario)
+        self.pedido = Pedido.objects.create(usuario=self.usuario, pedido_general=self.general)
         self.filas = [LineaPedido.objects.create(pedido=self.pedido, producto=self.producto,
                       nombre='Remera', precio=100, cantidad=1, color='Negro', talle='38') for _ in range(3)]
         self.client.force_login(self.usuario)
@@ -351,9 +353,10 @@ class PlanillaPedidosTests(TestCase):
 
 class OpcionesPedidoTests(TestCase):
     def setUp(self):
+        self.general = PedidoGeneral.objects.create(descripcion='Octubre')
         self.usuario = get_user_model().objects.create_user('opciones')
         self.client.force_login(self.usuario)
-        self.pedido = Pedido.objects.create(usuario=self.usuario)
+        self.pedido = Pedido.objects.create(usuario=self.usuario, pedido_general=self.general)
         self.principal = LineaPedido.objects.create(
             pedido=self.pedido, nombre='Zapatilla', precio=100, cantidad=1, posicion=1)
         self.url = reverse('agregar_opcion', args=[self.principal.pk])
