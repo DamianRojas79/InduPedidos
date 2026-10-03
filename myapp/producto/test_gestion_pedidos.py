@@ -42,7 +42,7 @@ class GestionPedidosTests(TestCase):
         self.assertGreaterEqual(pedido.fecha_creacion, antes)
         self.assertIsNone(pedido.fecha_entrega)
         pagina = self.client.get(self.gestion)
-        self.assertContains(pagina, 'Sin fecha de entrega')
+        self.assertContains(pagina, 'name="fecha_entrega" value=""')
         self.assertContains(pagina, 'Cerrar pedido')
         self.assertContains(pagina, 'disabled aria-describedby="ayuda-nuevo-pedido"')
         self.assertNotContains(pagina, f'href="{self.crear}"')
@@ -52,7 +52,7 @@ class GestionPedidosTests(TestCase):
             'descripcion': 'Pedido Octubre', 'fecha_entrega': '2026-10-31',
         }), self.gestion)
         self.assertEqual(PedidoGeneral.objects.get().fecha_entrega, date(2026, 10, 31))
-        self.assertContains(self.client.get(self.gestion), '31/10/2026')
+        self.assertContains(self.client.get(self.gestion), '2026-10-31')
 
     def test_validaciones_no_guardan_pedido(self):
         casos = [({}, 'descripcion'), ({'descripcion': '   '}, 'descripcion'),
@@ -72,7 +72,7 @@ class GestionPedidosTests(TestCase):
         self.assertContains(response, 'Cerrá el último pedido antes de crear uno nuevo.')
         self.assertEqual(PedidoGeneral.objects.count(), 1)
 
-    def test_cerrar_habilita_nuevo_y_solo_muestra_el_ultimo(self):
+    def test_cerrar_habilita_nuevo_y_muestra_historial_descendente(self):
         primero = PedidoGeneral.objects.create(descripcion='Pedido Octubre')
         fecha_creacion = primero.fecha_creacion
         cerrar = reverse('cerrar_pedido_general', args=[primero.pk])
@@ -91,7 +91,8 @@ class GestionPedidosTests(TestCase):
         self.assertEqual(ultimo.estado, 'abierto')
         pagina = self.client.get(self.gestion)
         self.assertContains(pagina, 'Pedido Noviembre')
-        self.assertNotContains(pagina, 'Pedido Octubre')
+        self.assertContains(pagina, 'Pedido Octubre')
+        self.assertLess(pagina.content.index(b'Pedido Noviembre'), pagina.content.index(b'Pedido Octubre'))
         self.assertEqual(PedidoGeneral.objects.count(), 2)
         # Un formulario de cierre viejo no debe cerrar el pedido nuevo.
         self.client.post(cerrar)
@@ -108,7 +109,8 @@ class GestionPedidosTests(TestCase):
     def test_permisos_para_todas_las_rutas(self):
         pedido = PedidoGeneral.objects.create(descripcion='Octubre')
         rutas = [(self.gestion, 'get'), (self.crear, 'get'), (self.crear, 'post'),
-                 (reverse('cerrar_pedido_general', args=[pedido.pk]), 'post')]
+                 (reverse('cerrar_pedido_general', args=[pedido.pk]), 'post'),
+                 (reverse('modificar_pedido_general', args=[pedido.pk]), 'post')]
         self.client.logout()
         for url, metodo in rutas:
             self.assertRedirects(getattr(self.client, metodo)(url), reverse('login') + '?next=' + url)
