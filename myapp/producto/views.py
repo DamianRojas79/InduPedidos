@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Count
 
-from .models import Categoria, Producto
+from .models import Categoria, PedidoGeneral, Producto
 
 # Create your views here.
 @login_required
@@ -32,5 +32,5 @@ def detalle(request, producto_id):
     return render(
         request,
         'producto/detalle_producto.html',
-        {'producto': producto},
+        {'producto': producto, 'pedido_abierto': PedidoGeneral.objects.filter(estado=PedidoGeneral.Estado.ABIERTO).exists()},
     )
