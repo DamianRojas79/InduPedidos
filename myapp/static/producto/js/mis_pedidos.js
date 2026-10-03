@@ -70,7 +70,7 @@
     });
     const nuevaFila = document.getElementById(window.location.hash.slice(1));
     if (nuevaFila && tabla.contains(nuevaFila)) {
-        nuevaFila.querySelector('[name="nombre"]').focus();
+        nuevaFila.querySelector('[name="nombre"], [name="descripcion"]')?.focus();
     }
     window.addEventListener('beforeunload', evento => {
         if (cantidadPendiente || tabla.querySelector('[aria-invalid="true"]')) {
