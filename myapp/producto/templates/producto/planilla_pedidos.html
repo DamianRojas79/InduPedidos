@@ -1,0 +1,12 @@
+<div class="table-responsive">
+<div class="contenido-planilla">
+<table class="table table-bordered align-middle planilla-pedidos">
+<thead><tr><th scope="col">Número de pedido</th><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th></tr></thead>
+<tbody>
+{% for linea in lineas %}
+{% include 'producto/fila_pedido.html' with numero=forloop.counter %}
+{% for opcion in linea.opciones.all %}
+{% include 'producto/fila_pedido.html' with linea=opcion numero=forloop.counter %}
+{% endfor %}
+{% endfor %}
+</tbody></table></div></div>
