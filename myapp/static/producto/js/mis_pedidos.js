@@ -57,7 +57,7 @@
             });
         });
     });
-    document.querySelectorAll('.planilla-pedidos form, #agregar-pedido').forEach(formulario => {
+    document.querySelectorAll('.planilla-pedidos form, #agregar-pedido, #filtros-pedidos').forEach(formulario => {
         formulario.addEventListener('submit', async evento => {
             evento.preventDefault();
             await pendientes;

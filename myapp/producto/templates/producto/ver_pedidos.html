@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Ver pedidos | InduPedidos{% endblock %}
+{% block content %}
+<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
+<link href="{% static 'producto/css/ver_pedidos.css' %}?v=20261006" rel="stylesheet">
+<h1>Ver pedidos</h1>
+<form id="filtros-pedidos" method="get" action="{% url 'ver_pedidos' %}" class="filtros-pedidos mb-4">
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.periodo.id_for_label }}">{{ form.periodo.label }}</label>
+        {{ form.periodo }}{{ form.periodo.errors }}
+    </div>
+    <fieldset class="mb-3">
+        <legend class="form-label fs-6">{{ form.filtro.label }}</legend>
+        {% for valor, etiqueta in form.filtro.field.choices %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="filtro" id="filtro-{{ valor }}" value="{{ valor }}"{% if form.filtro.value == valor %} checked{% endif %}>
+            <label class="form-check-label" for="filtro-{{ valor }}">{{ etiqueta }}</label>
+        </div>
+        {% endfor %}
+        {{ form.filtro.errors }}
+    </fieldset>
+    <div id="filtro-cliente" class="mb-3"{% if form.filtro.value == 'proveedor' %} hidden{% endif %}>
+        <label id="etiqueta-cliente" class="form-label" for="{{ form.cliente.id_for_label }}">{{ form.cliente.label }}</label>
+        {{ form.cliente }}
+        <div id="combo-cliente" class="combo-cliente" hidden>
+            <div class="input-group">
+                <input id="cliente-autocompletar" class="form-control" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lista-clientes" autocomplete="off" placeholder="Seleccioná o escribí un cliente">
+                <button id="abrir-clientes" class="btn btn-outline-secondary" type="button" tabindex="-1" aria-label="Mostrar lista de clientes" aria-controls="lista-clientes"><span aria-hidden="true">▾</span></button>
+            </div>
+            <div id="opciones-clientes" class="opciones-clientes" hidden>
+                <ul id="lista-clientes" role="listbox" aria-labelledby="etiqueta-cliente"></ul>
+                <p id="clientes-sin-resultados" class="m-0 p-2 text-muted" role="status" hidden>No se encontraron clientes.</p>
+            </div>
+        </div>
+        {{ form.cliente.errors }}
+    </div>
+    {{ form.non_field_errors }}
+    <button class="btn btn-dark" type="submit">Aplicar filtros</button>
+</form>
+{% if error %}<p class="alert alert-danger" role="alert">{{ error }}</p>{% endif %}
+{% if not hay_periodos %}
+<p class="alert alert-info">Todavía no hay períodos creados.</p>
+{% endif %}
+{% if form.filtro.value == 'proveedor' %}
+<p class="alert alert-info">El filtro por proveedor estará disponible próximamente.</p>
+{% elif cliente_elegido %}
+<h2 class="h5">Cliente: {{ cliente_elegido.username }}</h2>
+<p class="h5">Pedido: {{ pedido_general.descripcion }} <span class="badge text-bg-secondary">{{ pedido_general.get_estado_display }}</span></p>
+<p>Editá directamente las celdas. Los cambios se guardan al salir de la celda o presionar Enter.</p>
+<p id="estado-planilla" role="status" aria-live="polite"></p>
+<noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
+{% include 'producto/planilla_pedidos.html' %}
+{% if lineas %}
+<script src="{% static 'producto/js/mis_pedidos.js' %}?v=20261003" defer></script>
+{% else %}
+<p>Este cliente todavía no tiene pedidos en el período seleccionado.</p>
+{% endif %}
+<form id="agregar-pedido" method="post" action="{% url 'admin_agregar_pedido' pedido_general.pk cliente_elegido.pk %}">
+    {% csrf_token %}
+    <button class="btn btn-success" type="submit">Agregar nuevo pedido</button>
+</form>
+{% elif hay_periodos and not form.errors %}
+<p>Seleccioná un cliente o ingresá su nombre de usuario para ver sus pedidos.</p>
+{% endif %}
+<script src="{% static 'producto/js/ver_pedidos.js' %}?v=20261006" defer></script>
+{% endblock %}
