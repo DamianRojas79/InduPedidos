@@ -1,16 +1,20 @@
 import json
 from decimal import Decimal, InvalidOperation
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
+from .forms import VerPedidosForm
+from .gestion_pedidos import administrador_required
 from .models import LineaPedido, Pedido, PedidoGeneral, Producto
 
 
@@ -41,15 +45,81 @@ def pedido_abierto_required(view):
     return protegida
 
 
-def planilla(request, error=None, status=200):
-    pedido_general = PedidoGeneral.objects.filter(estado=PedidoGeneral.Estado.ABIERTO).first()
-    return render(request, 'producto/mis_pedidos.html', {
-        'pedido_general': pedido_general,
-        'pedidos': Pedido.objects.filter(usuario=request.user, pedido_general=pedido_general) if pedido_general else Pedido.objects.none(),
-        'lineas': filas_usuario(request.user, pedido_general).select_related('producto').prefetch_related(
+
+def contexto_lineas(usuario, periodo):
+    return {
+        'pedido_general': periodo,
+        'pedidos': Pedido.objects.filter(usuario=usuario, pedido_general=periodo) if periodo else Pedido.objects.none(),
+        'lineas': filas_usuario(usuario, periodo).select_related('producto').prefetch_related(
             Prefetch('opciones', queryset=LineaPedido.objects.order_by('posicion', 'pk'))
         ),
-        'error': error,
+    }
+
+
+def planilla_administrador(request, datos=None, error=None, status=200):
+    datos = request.GET.copy() if datos is None else datos.copy()
+    periodos = PedidoGeneral.objects.order_by('-fecha_creacion', '-pk')
+    if not datos.get('periodo'):
+        ultimo = periodos.filter(estado=PedidoGeneral.Estado.ABIERTO).first() or periodos.first()
+        datos['periodo'] = ultimo.pk if ultimo else ''
+    datos.setdefault('filtro', 'cliente')
+    form = VerPedidosForm(datos)
+    contexto = {'form': form, 'error': error, 'es_gestion': True, 'hay_periodos': periodos.exists()}
+    if form.is_valid():
+        periodo = form.cleaned_data['periodo']
+        cliente = form.cleaned_data['cliente']
+        if form.cleaned_data['filtro'] == 'cliente' and cliente and periodo:
+            contexto.update(contexto_lineas(cliente, periodo))
+            contexto['cliente_elegido'] = cliente
+    return render(request, 'producto/ver_pedidos.html', contexto, status=status)
+
+
+@administrador_required
+@require_GET
+def ver_pedidos(request):
+    return planilla_administrador(request)
+
+
+def edicion_planilla_required(view):
+    @wraps(view)
+    def protegida(request, *args, periodo_id=None, cliente_id=None, **kwargs):
+        if periodo_id is None:
+            request.cliente_pedido = request.user
+            return pedido_abierto_required(view)(request, *args, **kwargs)
+        if not request.user.is_staff:
+            raise PermissionDenied
+        # Las rutas administrativas fijan el cliente y el período en el servidor.
+        # El administrador también puede corregir pedidos de períodos cerrados.
+        with transaction.atomic():
+            request.pedido_general = get_object_or_404(
+                PedidoGeneral.objects.select_for_update(), pk=periodo_id,
+            )
+            request.cliente_pedido = get_object_or_404(
+                get_user_model(), pk=cliente_id, is_staff=False,
+            )
+            request.es_gestion = True
+            return view(request, *args, **kwargs)
+    return protegida
+
+
+def destino_planilla(request):
+    if getattr(request, 'es_gestion', False):
+        return reverse('ver_pedidos') + '?' + urlencode({
+            'periodo': request.pedido_general.pk, 'filtro': 'cliente',
+            'cliente': request.cliente_pedido.pk,
+        })
+    return reverse('mis_pedidos')
+
+
+def planilla(request, error=None, status=200):
+    if getattr(request, 'es_gestion', False):
+        return planilla_administrador(request, {
+            'periodo': request.pedido_general.pk, 'filtro': 'cliente',
+            'cliente': request.cliente_pedido.pk,
+        }, error=error, status=status)
+    pedido_general = PedidoGeneral.objects.filter(estado=PedidoGeneral.Estado.ABIERTO).first()
+    return render(request, 'producto/mis_pedidos.html', {
+        **contexto_lineas(request.user, pedido_general), 'error': error,
     }, status=status)
 
 
@@ -66,27 +136,27 @@ def mis_pedidos(request):
 
 @login_required
 @require_POST
-@pedido_abierto_required
+@edicion_planilla_required
 def agregar_pedido(request):
     with transaction.atomic():
-        get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        filas = list(filas_usuario(request.user, request.pedido_general))
+        get_user_model().objects.select_for_update().get(pk=request.cliente_pedido.pk)
+        filas = list(filas_usuario(request.cliente_pedido, request.pedido_general))
         renumerar(filas)
-        pedido = Pedido.objects.create(usuario=request.user, pedido_general=request.pedido_general)
+        pedido = Pedido.objects.create(usuario=request.cliente_pedido, pedido_general=request.pedido_general)
         linea = LineaPedido.objects.create(
             pedido=pedido, posicion=len(filas) + 1,
             nombre='', color='', talle='', precio=0, cantidad=1,
         )
-    return redirect(reverse('mis_pedidos') + f'#pedido-{linea.pk}')
+    return redirect(destino_planilla(request) + f'#pedido-{linea.pk}')
 
 
 @login_required
 @require_POST
-@pedido_abierto_required
+@edicion_planilla_required
 def agregar_opcion(request, linea_id):
     with transaction.atomic():
-        get_user_model().objects.select_for_update().get(pk=request.user.pk)
-        principal = get_object_or_404(filas_usuario(request.user, request.pedido_general), pk=linea_id)
+        get_user_model().objects.select_for_update().get(pk=request.cliente_pedido.pk)
+        principal = get_object_or_404(filas_usuario(request.cliente_pedido, request.pedido_general), pk=linea_id)
         cantidad = principal.opciones.count()
         if cantidad >= 3:
             return planilla(request, error='Cada pedido admite hasta 3 opciones de compra.', status=400)
@@ -94,20 +164,20 @@ def agregar_opcion(request, linea_id):
             pedido=principal.pedido, principal=principal, posicion=cantidad + 1,
             nombre='', color='', talle='', precio=0, cantidad=1,
         )
-    return redirect(reverse('mis_pedidos') + f'#pedido-{opcion.pk}')
+    return redirect(destino_planilla(request) + f'#pedido-{opcion.pk}')
 
 
 @login_required
 @require_POST
-@pedido_abierto_required
+@edicion_planilla_required
 def modificar_pedido(request, linea_id):
     with transaction.atomic():
-        get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        get_user_model().objects.select_for_update().get(pk=request.cliente_pedido.pk)
         linea = get_object_or_404(
-            LineaPedido.objects.filter(pedido__usuario=request.user, pedido__pedido_general=request.pedido_general),
+            LineaPedido.objects.filter(pedido__usuario=request.cliente_pedido, pedido__pedido_general=request.pedido_general),
             pk=linea_id,
         )
-        filas = list(filas_usuario(request.user, request.pedido_general))
+        filas = list(filas_usuario(request.cliente_pedido, request.pedido_general))
         campo = request.POST.get('campo')
         valor = request.POST.get('valor', '').strip()
         if campo not in ('numero', 'nombre', 'color', 'talle'):
@@ -135,12 +205,12 @@ def modificar_pedido(request, linea_id):
 
 @login_required
 @require_POST
-@pedido_abierto_required
+@edicion_planilla_required
 def eliminar_pedido(request, linea_id):
     with transaction.atomic():
-        get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        get_user_model().objects.select_for_update().get(pk=request.cliente_pedido.pk)
         linea = get_object_or_404(
-            LineaPedido.objects.filter(pedido__usuario=request.user, pedido__pedido_general=request.pedido_general),
+            LineaPedido.objects.filter(pedido__usuario=request.cliente_pedido, pedido__pedido_general=request.pedido_general),
             pk=linea_id,
         )
         pedido = linea.pedido
@@ -150,8 +220,8 @@ def eliminar_pedido(request, linea_id):
             renumerar(list(principal.opciones.order_by('posicion', 'pk')))
         if not pedido.lineas.exists():
             pedido.delete()
-        renumerar(list(filas_usuario(request.user, request.pedido_general)))
-    return redirect('mis_pedidos')
+        renumerar(list(filas_usuario(request.cliente_pedido, request.pedido_general)))
+    return redirect(destino_planilla(request))
 
 
 @login_required
