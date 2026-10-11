@@ -3,7 +3,7 @@
 {% block title %}Ver pedidos | InduPedidos{% endblock %}
 {% block content %}
 <link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
-<link href="{% static 'producto/css/ver_pedidos.css' %}?v=20261006" rel="stylesheet">
+<link href="{% static 'producto/css/ver_pedidos.css' %}?v=20261008" rel="stylesheet">
 <h1>Ver pedidos</h1>
 <form id="filtros-pedidos" method="get" action="{% url 'ver_pedidos' %}" class="filtros-pedidos mb-4">
     <div class="mb-3">
@@ -52,7 +52,7 @@
 <noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
 {% include 'producto/planilla_pedidos.html' %}
 {% if lineas %}
-<script src="{% static 'producto/js/mis_pedidos.js' %}?v=20261003" defer></script>
+<script src="{% static 'producto/js/mis_pedidos.js' %}?v=20261008" defer></script>
 {% else %}
 <p>Este cliente todavía no tiene pedidos en el período seleccionado.</p>
 {% endif %}
