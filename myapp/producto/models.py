@@ -135,11 +135,16 @@ class LineaPedido(models.Model):
     posicion = models.PositiveIntegerField(default=0)
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='lineas')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, null=True, blank=True)
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT, null=True, blank=True)
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=14, decimal_places=2)
     cantidad = models.PositiveIntegerField()
     color = models.CharField(max_length=100, blank=True)
     talle = models.CharField(max_length=100, blank=True)
+
+    @property
+    def proveedor_actual_id(self):
+        return self.proveedor_id or (self.producto.id_proveedor_id if self.producto_id else None)
 
     @property
     def subtotal(self):
