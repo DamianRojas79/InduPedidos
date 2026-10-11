@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch
+from django.db.models.functions import Lower
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model
@@ -15,7 +16,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .forms import VerPedidosForm
 from .gestion_pedidos import administrador_required
-from .models import LineaPedido, Pedido, PedidoGeneral, Producto
+from .models import LineaPedido, Pedido, PedidoGeneral, Producto, Proveedor
 
 
 def filas_usuario(usuario, pedido_general):
@@ -51,7 +52,7 @@ def contexto_lineas(usuario, periodo):
         'pedido_general': periodo,
         'pedidos': Pedido.objects.filter(usuario=usuario, pedido_general=periodo) if periodo else Pedido.objects.none(),
         'lineas': filas_usuario(usuario, periodo).select_related('producto').prefetch_related(
-            Prefetch('opciones', queryset=LineaPedido.objects.order_by('posicion', 'pk'))
+            Prefetch('opciones', queryset=LineaPedido.objects.select_related('producto').order_by('posicion', 'pk'))
         ),
     }
 
@@ -71,6 +72,7 @@ def planilla_administrador(request, datos=None, error=None, status=200):
         if form.cleaned_data['filtro'] == 'cliente' and cliente and periodo:
             contexto.update(contexto_lineas(cliente, periodo))
             contexto['cliente_elegido'] = cliente
+            contexto['proveedores'] = Proveedor.objects.order_by(Lower('nombre'), 'nombre', 'pk')
     return render(request, 'producto/ver_pedidos.html', contexto, status=status)
 
 
@@ -180,9 +182,25 @@ def modificar_pedido(request, linea_id):
         filas = list(filas_usuario(request.cliente_pedido, request.pedido_general))
         campo = request.POST.get('campo')
         valor = request.POST.get('valor', '').strip()
-        if campo not in ('numero', 'nombre', 'color', 'talle'):
+        campos = ('numero', 'nombre', 'color', 'talle')
+        if getattr(request, 'es_gestion', False):
+            campos += ('proveedor',)
+        if campo not in campos:
             return JsonResponse({'error': 'La columna no es válida.'}, status=400)
-        if campo == 'numero':
+        if campo == 'proveedor':
+            proveedor = None
+            if valor:
+                try:
+                    proveedor_id = int(valor)
+                    if not 0 < proveedor_id <= 2147483647:
+                        raise ValueError
+                    proveedor = Proveedor.objects.get(pk=proveedor_id)
+                except (ValueError, Proveedor.DoesNotExist):
+                    return JsonResponse({'error': 'Seleccioná un proveedor existente.'}, status=400)
+            linea.proveedor = proveedor
+            linea.save(update_fields=['proveedor'])
+            valor = str(linea.proveedor_actual_id or '')
+        elif campo == 'numero':
             if linea.principal_id:
                 return JsonResponse({'error': 'Las opciones se numeran automáticamente.'}, status=400)
             try:
