@@ -3,6 +3,15 @@
 <td><input aria-label="Producto" type="text" name="nombre" value="{{ linea.nombre }}" maxlength="100" required></td>
 <td><input aria-label="Color" type="text" name="color" value="{{ linea.color }}" maxlength="100"></td>
 <td class="celda-talle"><input aria-label="Talle" type="text" name="talle" value="{{ linea.talle }}" maxlength="100">
+{% if es_gestion %}</td>
+<td class="celda-proveedor">
+<select aria-label="Proveedor" name="proveedor">
+    <option value="">{% if linea.producto.id_proveedor_id %}Usar proveedor del producto{% else %}Sin proveedor{% endif %}</option>
+    {% for proveedor in proveedores %}
+    <option value="{{ proveedor.pk }}"{% if proveedor.pk == linea.proveedor_actual_id %} selected{% endif %}>{{ proveedor.nombre }}</option>
+    {% endfor %}
+</select>
+{% endif %}
 <div class="acciones-pedido"><form method="post" action="{% if es_gestion %}{% url 'admin_eliminar_pedido' pedido_general.pk cliente_elegido.pk linea.pk %}{% else %}{% url 'eliminar_pedido' linea.pk %}{% endif %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form>{% if not linea.principal_id %}
 <form method="post" action="{% if es_gestion %}{% url 'admin_agregar_opcion' pedido_general.pk cliente_elegido.pk linea.pk %}{% else %}{% url 'agregar_opcion' linea.pk %}{% endif %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" type="submit"{% if linea.opciones.all|length >= 3 %} disabled{% endif %}>Agregar opción</button></form>
 {% endif %}</div></td>
