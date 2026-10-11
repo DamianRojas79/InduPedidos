@@ -6,7 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import LineaPedido, Pedido, PedidoGeneral
+from .models import LineaPedido, Pedido, PedidoGeneral, Producto, Proveedor
 
 
 class VerPedidosTests(TestCase):
@@ -87,6 +87,76 @@ class VerPedidosTests(TestCase):
         self.assertContains(respuesta, 'El filtro por proveedor estará disponible próximamente.')
         self.assertNotContains(respuesta, 'Remera actual')
         self.assertNotContains(respuesta, 'id="agregar-pedido"')
+
+    def crear_proveedor(self, nombre):
+        return Proveedor.objects.create(nombre=nombre, calle_nombre='Mitre', calle_numero=123, localidad='Rosario')
+
+    def test_columna_proveedor_precarga_producto_y_ordena_combo_por_nombre(self):
+        zeta = self.crear_proveedor('Zeta')
+        alfa = self.crear_proveedor('alfa')
+        producto = Producto.objects.create(nombre='Remera', precio=100, id_proveedor=zeta)
+        self.linea.producto = producto
+        self.linea.save()
+        respuesta = self.client.get(self.destino())
+        self.assertContains(respuesta, '<th scope="col">Talle</th><th scope="col">Proveedor</th>', html=False)
+        self.assertEqual(list(respuesta.context['proveedores']), [alfa, zeta])
+        self.assertContains(respuesta, f'<option value="{zeta.pk}" selected>Zeta</option>', html=True)
+        self.assertLess(respuesta.content.index(b'>alfa</option>'), respuesta.content.index(b'>Zeta</option>'))
+
+    def test_proveedor_se_guarda_en_lineas_manuales_y_opciones(self):
+        proveedor = self.crear_proveedor('Proveedor elegido')
+        self.client.post(self.url('agregar_opcion', self.linea))
+        opcion = self.linea.opciones.get()
+        for linea in [self.linea, opcion]:
+            respuesta = self.client.post(self.url('modificar_pedido', linea), {
+                'campo': 'proveedor', 'valor': str(proveedor.pk),
+            })
+            self.assertEqual(respuesta.status_code, 200)
+            self.assertEqual(respuesta.json()['valor'], str(proveedor.pk))
+            linea.refresh_from_db()
+            self.assertEqual(linea.proveedor, proveedor)
+        self.assertContains(self.client.get(self.destino()),
+                            f'<option value="{proveedor.pk}" selected>Proveedor elegido</option>', count=2, html=True)
+        self.client.post(self.url('modificar_pedido', self.linea), {'campo': 'proveedor', 'valor': ''})
+        self.linea.refresh_from_db()
+        self.assertIsNone(self.linea.proveedor_actual_id)
+
+    def test_proveedor_del_pedido_no_modifica_catalogo_y_puede_restaurarse(self):
+        original = self.crear_proveedor('Original')
+        elegido = self.crear_proveedor('Elegido')
+        producto = Producto.objects.create(nombre='Remera', precio=100, id_proveedor=original)
+        self.linea.producto = producto
+        self.linea.save()
+        url = self.url('modificar_pedido', self.linea)
+        self.client.post(url, {'campo': 'proveedor', 'valor': elegido.pk})
+        self.linea.refresh_from_db()
+        producto.refresh_from_db()
+        self.assertEqual(self.linea.proveedor_actual_id, elegido.pk)
+        self.assertEqual(producto.id_proveedor, original)
+        self.assertContains(self.client.get(self.destino()),
+                            f'<option value="{elegido.pk}" selected>Elegido</option>', html=True)
+        respuesta = self.client.post(url, {'campo': 'proveedor', 'valor': ''})
+        self.assertEqual(respuesta.json()['valor'], str(original.pk))
+        self.linea.refresh_from_db()
+        self.assertEqual(self.linea.proveedor_actual_id, original.pk)
+
+    def test_proveedor_invalido_y_cliente_no_puede_asignarlo(self):
+        proveedor = self.crear_proveedor('Existente')
+        self.linea.proveedor = proveedor
+        self.linea.save()
+        for valor in ['inexistente', '99999', '-1', '9' * 100]:
+            respuesta = self.client.post(self.url('modificar_pedido', self.linea), {
+                'campo': 'proveedor', 'valor': valor,
+            })
+            self.assertEqual(respuesta.status_code, 400)
+        self.client.force_login(self.cliente)
+        self.assertNotContains(self.client.get(reverse('mis_pedidos')), 'name="proveedor"')
+        respuesta = self.client.post(reverse('modificar_pedido', args=[self.linea.pk]), {
+            'campo': 'proveedor', 'valor': '',
+        })
+        self.assertEqual(respuesta.status_code, 400)
+        self.linea.refresh_from_db()
+        self.assertEqual(self.linea.proveedor, proveedor)
 
     def test_sin_periodos(self):
         Pedido.objects.all().delete()
