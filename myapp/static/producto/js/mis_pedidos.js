@@ -3,10 +3,10 @@
     const tabla = document.querySelector('.planilla-pedidos');
     let pendientes = Promise.resolve();
     let cantidadPendiente = 0;
-    tabla.querySelectorAll('input:not([type="hidden"])').forEach(celda => {
+    tabla.querySelectorAll('input:not([type="hidden"]), select[name="proveedor"]').forEach(celda => {
         celda.dataset.guardado = celda.value;
         celda.addEventListener('keydown', evento => {
-            if (evento.key === 'Enter') {
+            if (evento.key === 'Enter' && celda.tagName !== 'SELECT') {
                 evento.preventDefault();
                 celda.blur();
             }
