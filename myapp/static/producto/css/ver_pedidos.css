@@ -1,4 +1,12 @@
 .filtros-pedidos { width: 25vw; max-width: 100%; }
+.contenido-planilla { min-width: 1150px; }
+.planilla-pedidos .celda-proveedor { position: relative; }
+.planilla-pedidos select {
+    display: block; width: 100%; min-width: 180px; padding: .7rem;
+    border: 0; border-radius: 0; background: transparent; color: inherit;
+}
+.planilla-pedidos select:focus { outline: 2px solid #198754; outline-offset: -2px; background: #f3fff7; }
+.planilla-pedidos select[aria-invalid="true"] { background: #fff0f0; outline: 2px solid #dc3545; outline-offset: -2px; }
 .combo-cliente { position: relative; }
 .opciones-clientes {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
