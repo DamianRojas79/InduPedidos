@@ -45,9 +45,13 @@
 {% if form.filtro.value == 'proveedor' %}
 <p class="alert alert-info">El filtro por proveedor estará disponible próximamente.</p>
 {% elif cliente_elegido %}
+
+<!--
 <h2 class="h5">Cliente: {{ cliente_elegido.username }}</h2>
 <p class="h5">Pedido: {{ pedido_general.descripcion }} <span class="badge text-bg-secondary">{{ pedido_general.get_estado_display }}</span></p>
 <p>Editá directamente las celdas. Los cambios se guardan al salir de la celda o presionar Enter.</p>
+-->
+
 <p id="estado-planilla" role="status" aria-live="polite"></p>
 <noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
 {% include 'producto/planilla_pedidos.html' %}
