@@ -3,7 +3,7 @@
 {% block title %}Ver pedidos | InduPedidos{% endblock %}
 {% block content %}
 <link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
-<link href="{% static 'producto/css/ver_pedidos.css' %}?v=20261008" rel="stylesheet">
+<link href="{% static 'producto/css/ver_pedidos.css' %}?v=20261011" rel="stylesheet">
 <h1>Ver pedidos</h1>
 <form id="filtros-pedidos" method="get" action="{% url 'ver_pedidos' %}" class="filtros-pedidos mb-4">
     <div class="mb-3">
@@ -35,6 +35,21 @@
         </div>
         {{ form.cliente.errors }}
     </div>
+    <div id="filtro-proveedor" class="mb-3"{% if form.filtro.value != 'proveedor' %} hidden{% endif %}>
+        <label id="etiqueta-proveedor" class="form-label" for="{{ form.proveedor.id_for_label }}">{{ form.proveedor.label }}</label>
+        {{ form.proveedor }}
+        <div id="combo-proveedor" class="combo-proveedor" hidden>
+            <div class="input-group">
+                <input id="proveedor-autocompletar" class="form-control" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lista-proveedores" autocomplete="off" placeholder="Seleccioná o escribí un proveedor">
+                <button id="abrir-proveedores" class="btn btn-outline-secondary" type="button" tabindex="-1" aria-label="Mostrar lista de proveedores" aria-controls="lista-proveedores"><span aria-hidden="true">▾</span></button>
+            </div>
+            <div id="opciones-proveedores" class="opciones-proveedores" hidden>
+                <ul id="lista-proveedores" role="listbox" aria-labelledby="etiqueta-proveedor"></ul>
+                <p id="proveedores-sin-resultados" class="m-0 p-2 text-muted" role="status" hidden>No se encontraron proveedores.</p>
+            </div>
+        </div>
+        {{ form.proveedor.errors }}
+    </div>
     {{ form.non_field_errors }}
     <button class="btn btn-dark" type="submit">Aplicar filtros</button>
 </form>
@@ -43,7 +58,15 @@
 <p class="alert alert-info">Todavía no hay períodos creados.</p>
 {% endif %}
 {% if form.filtro.value == 'proveedor' %}
-<p class="alert alert-info">El filtro por proveedor estará disponible próximamente.</p>
+{% if proveedor_elegido %}
+<h2 class="h5">Proveedor: {{ proveedor_elegido.nombre }}</h2>
+{% include 'producto/planilla_proveedor.html' %}
+{% if not lineas %}
+<p>Este proveedor todavía no tiene pedidos en el período seleccionado.</p>
+{% endif %}
+{% elif hay_periodos and not form.errors %}
+<p>Seleccioná un proveedor o ingresá su nombre para ver sus pedidos.</p>
+{% endif %}
 {% elif cliente_elegido %}
 
 <!--
@@ -67,5 +90,5 @@
 {% elif hay_periodos and not form.errors %}
 <p>Seleccioná un cliente o ingresá su nombre de usuario para ver sus pedidos.</p>
 {% endif %}
-<script src="{% static 'producto/js/ver_pedidos.js' %}?v=20261006" defer></script>
+<script src="{% static 'producto/js/ver_pedidos.js' %}?v=20261011" defer></script>
 {% endblock %}
