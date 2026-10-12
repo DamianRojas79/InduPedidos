@@ -1,0 +1,15 @@
+<div class="table-responsive">
+<table class="table table-bordered align-middle planilla-pedidos planilla-proveedor" aria-label="Pedidos del proveedor {{ proveedor_elegido.nombre }}">
+<thead><tr><th scope="col">Producto</th><th scope="col">Color</th><th scope="col">Talle</th><th scope="col">Cliente</th></tr></thead>
+<tbody>
+{% for linea in lineas %}
+<tr>
+    <td><span class="valor-pedido">{{ linea.nombre }}</span></td>
+    <td><span class="valor-pedido">{{ linea.color }}</span></td>
+    <td><span class="valor-pedido">{{ linea.talle }}</span></td>
+    <td><span class="valor-pedido">{{ linea.pedido.usuario.username }}</span></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
