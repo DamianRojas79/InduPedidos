@@ -82,11 +82,75 @@ class VerPedidosTests(TestCase):
                 self.assertTrue(respuesta.context['form'].errors)
                 self.assertNotContains(respuesta, 'id="agregar-pedido"')
 
-    def test_proveedor_solo_muestra_aviso(self):
+    def test_proveedor_muestra_combo_completo_y_solicita_seleccion(self):
+        zeta = self.crear_proveedor('Zeta')
+        alfa = self.crear_proveedor('alfa')
         respuesta = self.client.get(reverse('ver_pedidos'), {'filtro': 'proveedor', 'cliente': self.cliente.pk})
-        self.assertContains(respuesta, 'El filtro por proveedor estará disponible próximamente.')
+        self.assertEqual(list(respuesta.context['form'].fields['proveedor'].queryset), [alfa, zeta])
+        self.assertContains(respuesta, 'id="filtro-proveedor" class="mb-3">')
+        self.assertContains(respuesta, 'Seleccioná un proveedor o ingresá su nombre')
         self.assertNotContains(respuesta, 'Remera actual')
         self.assertNotContains(respuesta, 'id="agregar-pedido"')
+
+    def test_planilla_proveedor_incluye_todos_los_clientes_y_es_solo_lectura(self):
+        proveedor = self.crear_proveedor('Proveedor compartido')
+        for linea in [self.linea, self.ajena, self.historica]:
+            linea.proveedor = proveedor
+            linea.color = 'Azul'
+            linea.talle = 'XL'
+            linea.save()
+        respuesta = self.client.get(reverse('ver_pedidos'), {
+            'filtro': 'proveedor', 'proveedor': proveedor.pk, 'cliente': self.cliente.pk,
+        })
+        self.assertTemplateUsed(respuesta, 'producto/planilla_proveedor.html')
+        self.assertEqual(set(respuesta.context['lineas']), {self.linea, self.ajena})
+        for valor in ['Remera actual', 'Pedido ajeno', 'Azul', 'XL', 'ana', 'beatriz']:
+            self.assertContains(respuesta, f'<span class="valor-pedido">{valor}</span>', html=True)
+        self.assertContains(respuesta, '<th scope="col">Producto</th><th scope="col">Color</th>'
+                            '<th scope="col">Talle</th><th scope="col">Cliente</th>', html=True)
+        self.assertNotContains(respuesta, 'Campera histórica')
+        tabla = respuesta.content.decode().split('<table', 1)[1].split('</table>', 1)[0]
+        for control in ['<input', '<select', '<button', '<form', 'contenteditable', 'data-url']:
+            self.assertNotIn(control, tabla)
+        self.assertNotContains(respuesta, 'js/mis_pedidos.js')
+        self.assertNotContains(respuesta, 'id="agregar-pedido"')
+        respuesta = self.client.get(reverse('ver_pedidos'), {
+            'filtro': 'proveedor', 'proveedor': proveedor.pk, 'periodo': self.anterior.pk,
+        })
+        self.assertEqual(list(respuesta.context['lineas']), [self.historica])
+
+    def test_filtro_proveedor_respeta_asignacion_manual_catalogo_y_opciones(self):
+        original = self.crear_proveedor('Original')
+        elegido = self.crear_proveedor('Elegido')
+        producto = Producto.objects.create(nombre='Remera', precio=100, id_proveedor=original)
+        self.linea.producto = producto
+        self.linea.save()
+        self.ajena.producto = producto
+        self.ajena.proveedor = elegido
+        self.ajena.save()
+        opcion = LineaPedido.objects.create(
+            pedido=self.ajena.pedido, principal=self.ajena, proveedor=original,
+            nombre='Alternativa', precio=0, cantidad=1, posicion=1,
+        )
+        for proveedor, esperadas in [(original, {self.linea, opcion}), (elegido, {self.ajena})]:
+            with self.subTest(proveedor=proveedor):
+                respuesta = self.client.get(reverse('ver_pedidos'), {
+                    'filtro': 'proveedor', 'proveedor': proveedor.pk,
+                })
+                self.assertEqual(set(respuesta.context['lineas']), esperadas)
+
+    def test_proveedor_sin_pedidos_e_invalido(self):
+        proveedor = self.crear_proveedor('Sin pedidos')
+        respuesta = self.client.get(reverse('ver_pedidos'), {
+            'filtro': 'proveedor', 'proveedor': proveedor.pk,
+        })
+        self.assertContains(respuesta, 'Este proveedor todavía no tiene pedidos en el período seleccionado.')
+        for valor in ['incorrecto', 99999, '-1', '9' * 100]:
+            with self.subTest(valor=valor):
+                respuesta = self.client.get(reverse('ver_pedidos'), {'filtro': 'proveedor', 'proveedor': valor})
+                self.assertEqual(respuesta.status_code, 200)
+                self.assertIn('proveedor', respuesta.context['form'].errors)
+                self.assertTemplateNotUsed(respuesta, 'producto/planilla_proveedor.html')
 
     def crear_proveedor(self, nombre):
         return Proveedor.objects.create(nombre=nombre, calle_nombre='Mitre', calle_numero=123, localidad='Rosario')
