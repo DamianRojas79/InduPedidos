@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.functions import Lower
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -73,6 +73,18 @@ def planilla_administrador(request, datos=None, error=None, status=200):
             contexto.update(contexto_lineas(cliente, periodo))
             contexto['cliente_elegido'] = cliente
             contexto['proveedores'] = Proveedor.objects.order_by(Lower('nombre'), 'nombre', 'pk')
+        proveedor = form.cleaned_data['proveedor']
+        if form.cleaned_data['filtro'] == 'proveedor' and proveedor and periodo:
+            contexto.update({
+                'pedido_general': periodo,
+                'proveedor_elegido': proveedor,
+                'lineas': LineaPedido.objects.filter(
+                    Q(proveedor=proveedor) | Q(proveedor__isnull=True, producto__id_proveedor=proveedor),
+                    pedido__pedido_general=periodo,
+                ).select_related('pedido__usuario').order_by(
+                    Lower('pedido__usuario__username'), 'pedido__usuario_id', 'pedido_id', 'posicion', 'pk',
+                ),
+            })
     return render(request, 'producto/ver_pedidos.html', contexto, status=status)
 
 
