@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -154,6 +156,97 @@ class VerPedidosTests(TestCase):
 
     def crear_proveedor(self, nombre):
         return Proveedor.objects.create(nombre=nombre, calle_nombre='Mitre', calle_numero=123, localidad='Rosario')
+
+    def leer_csv(self, respuesta):
+        self.assertEqual(respuesta.status_code, 200)
+        return list(csv.reader(io.StringIO(respuesta.content.decode('utf-8-sig'), newline='')))
+
+    def test_descarga_todos_los_clientes_respetando_solo_periodo(self):
+        zeta = get_user_model().objects.create_user('Zeta')
+        self.crear_linea(zeta, None, 'Pedido sin período')
+        linea_zeta = self.crear_linea(zeta, self.actual, 'Pedido Zeta')
+        respuesta = self.client.get(reverse('descargar_pedidos_por_cliente'), {
+            'periodo': self.actual.pk, 'cliente': self.cliente.pk,
+            'filtro': 'proveedor', 'proveedor': 99999,
+        })
+        self.assertEqual(respuesta['Content-Type'], 'text/csv; charset=utf-8')
+        self.assertEqual(respuesta['Content-Disposition'], 'attachment; filename="pedidos_por_cliente.csv"')
+        filas = self.leer_csv(respuesta)
+        self.assertEqual(filas[0], ['Número de pedido', 'Producto', 'Color', 'Talle', 'Proveedor', 'Cliente'])
+        self.assertEqual(filas[1:], [
+            ['1', linea_zeta.nombre, '', '', '', 'Zeta'],
+            ['1', self.ajena.nombre, '', '', '', 'beatriz'],
+            ['1', self.linea.nombre, '', '', '', 'ana'],
+        ])
+
+    def test_descarga_proveedores_opciones_y_caracteres_especiales(self):
+        original = self.crear_proveedor('Fábrica, "Sur"')
+        elegido = self.crear_proveedor('Proveedor manual')
+        producto = Producto.objects.create(nombre='Catálogo', precio=100, id_proveedor=original)
+        self.linea.producto = producto
+        self.linea.nombre = 'Remera, "edición especial"\nAlgodón'
+        self.linea.color = 'Azul'
+        self.linea.talle = 'XL'
+        self.linea.save()
+        self.ajena.producto = producto
+        self.ajena.proveedor = elegido
+        self.ajena.save()
+        LineaPedido.objects.create(
+            pedido=self.linea.pedido, principal=self.linea, posicion=1,
+            nombre='Alternativa', proveedor=elegido, precio=0, cantidad=1,
+        )
+        filas = self.leer_csv(self.client.get(reverse('descargar_pedidos_por_cliente'), {'periodo': self.actual.pk}))
+        self.assertIn(['1', self.linea.nombre, 'Azul', 'XL', original.nombre, 'ana'], filas)
+        self.assertIn(['1', self.ajena.nombre, '', '', elegido.nombre, 'beatriz'], filas)
+        indice = next(i for i, fila in enumerate(filas) if fila[1] == self.linea.nombre)
+        self.assertEqual(filas[indice + 1], ['1 - Opción 1', 'Alternativa', '', '', elegido.nombre, 'ana'])
+
+    def test_descarga_periodo_cerrado_y_periodo_invalido(self):
+        url = reverse('descargar_pedidos_por_cliente')
+        filas = self.leer_csv(self.client.get(url, {'periodo': self.anterior.pk}))
+        self.assertEqual(filas[1:], [['1', self.historica.nombre, '', '', '', 'ana']])
+        for valor in ['', 'incorrecto', 99999, '-1', '9' * 100]:
+            with self.subTest(periodo=valor):
+                respuesta = self.client.get(url, {'periodo': valor})
+                self.assertEqual(respuesta.status_code, 400)
+                self.assertNotIn('Content-Disposition', respuesta)
+        self.assertEqual(self.client.get(url).status_code, 400)
+
+    def test_descarga_textos_no_se_interpretan_como_formulas(self):
+        self.linea.nombre = '=1+1'
+        self.linea.color = '+SUM(1,2)'
+        self.linea.talle = '@SUM(1,2)'
+        self.linea.save()
+        filas = self.leer_csv(self.client.get(reverse('descargar_pedidos_por_cliente'), {'periodo': self.actual.pk}))
+        self.assertIn(['1', "'=1+1", "'+SUM(1,2)", "'@SUM(1,2)", '', 'ana'], filas)
+
+    def test_descarga_sin_pedidos_y_boton_debajo_de_planilla(self):
+        url = reverse('descargar_pedidos_por_cliente')
+        proveedor = self.crear_proveedor('Proveedor')
+        for datos in [{}, {'cliente': self.cliente.pk},
+                      {'periodo': self.anterior.pk, 'cliente': self.cliente.pk},
+                      {'filtro': 'proveedor', 'proveedor': proveedor.pk}]:
+            respuesta = self.client.get(reverse('ver_pedidos'), datos)
+            periodo_id = datos.get('periodo', self.actual.pk)
+            self.assertContains(respuesta,
+                                f'<a class="btn btn-info" href="{url}?periodo={periodo_id}">Descarga por cliente</a>',
+                                html=True)
+            if 'cliente' in datos or 'proveedor' in datos:
+                self.assertGreater(respuesta.content.index(url.encode()), respuesta.content.index(b'</table>'))
+            if 'cliente' in datos:
+                acciones = respuesta.content.decode().split('class="d-flex flex-wrap align-items-center gap-2 mt-3">', 1)[1].split('</div>', 1)[0]
+                self.assertIn('id="agregar-pedido"', acciones)
+                self.assertIn(f'href="{url}?periodo={periodo_id}"', acciones)
+        Pedido.objects.all().delete()
+        self.assertEqual(len(self.leer_csv(self.client.get(url, {'periodo': self.actual.pk}))), 1)
+
+    def test_descarga_solo_administradores_y_get(self):
+        url = reverse('descargar_pedidos_por_cliente')
+        self.assertEqual(self.client.post(url).status_code, 405)
+        self.client.logout()
+        self.assertRedirects(self.client.get(url), reverse('login') + '?next=' + url)
+        self.client.force_login(self.cliente)
+        self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_columna_proveedor_precarga_producto_y_ordena_combo_por_nombre(self):
         zeta = self.crear_proveedor('Zeta')
