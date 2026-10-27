@@ -57,9 +57,14 @@
 {% if not hay_periodos %}
 <p class="alert alert-info">Todavía no hay períodos creados.</p>
 {% endif %}
-{% if form.filtro.value == 'proveedor' %}
 {% if proveedor_elegido %}
 <h2 class="h5">Proveedor: {{ proveedor_elegido.nombre }}</h2>
+{% elif cliente_elegido %}
+<p id="estado-planilla" role="status" aria-live="polite"></p>
+<noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
+{% endif %}
+{% if form.filtro.value == 'proveedor' %}
+{% if proveedor_elegido %}
 {% include 'producto/planilla_proveedor.html' %}
 {% if not lineas %}
 <p>Este proveedor todavía no tiene pedidos en el período seleccionado.</p>
@@ -69,26 +74,27 @@
 {% endif %}
 {% elif cliente_elegido %}
 
-<!--
-<h2 class="h5">Cliente: {{ cliente_elegido.username }}</h2>
-<p class="h5">Pedido: {{ pedido_general.descripcion }} <span class="badge text-bg-secondary">{{ pedido_general.get_estado_display }}</span></p>
-<p>Editá directamente las celdas. Los cambios se guardan al salir de la celda o presionar Enter.</p>
--->
-
-<p id="estado-planilla" role="status" aria-live="polite"></p>
-<noscript><p class="alert alert-warning">Activá JavaScript para editar y guardar las celdas.</p></noscript>
 {% include 'producto/planilla_pedidos.html' %}
 {% if lineas %}
 <script src="{% static 'producto/js/mis_pedidos.js' %}?v=20261008" defer></script>
 {% else %}
 <p>Este cliente todavía no tiene pedidos en el período seleccionado.</p>
 {% endif %}
+{% elif hay_periodos and not form.errors %}
+<p>Seleccioná un cliente o ingresá su nombre de usuario para ver sus pedidos.</p>
+{% endif %}
+<div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+{% if cliente_elegido %}
 <form id="agregar-pedido" method="post" action="{% url 'admin_agregar_pedido' pedido_general.pk cliente_elegido.pk %}">
     {% csrf_token %}
     <button class="btn btn-success" type="submit">Agregar nuevo pedido</button>
 </form>
-{% elif hay_periodos and not form.errors %}
-<p>Seleccioná un cliente o ingresá su nombre de usuario para ver sus pedidos.</p>
 {% endif %}
+    {% if periodo_descarga %}
+    <a class="btn btn-info" href="{% url 'descargar_pedidos_por_cliente' %}?periodo={{ periodo_descarga.pk }}">Descarga por cliente</a>
+    {% else %}
+    <button class="btn btn-info" type="button" disabled>Descarga por cliente</button>
+    {% endif %}
+</div>
 <script src="{% static 'producto/js/ver_pedidos.js' %}?v=20261011" defer></script>
 {% endblock %}
