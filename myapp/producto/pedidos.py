@@ -1,3 +1,4 @@
+import csv
 import json
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -8,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.db.models.functions import Lower
-from django.http import JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -68,6 +69,7 @@ def planilla_administrador(request, datos=None, error=None, status=200):
     contexto = {'form': form, 'error': error, 'es_gestion': True, 'hay_periodos': periodos.exists()}
     if form.is_valid():
         periodo = form.cleaned_data['periodo']
+        contexto['periodo_descarga'] = periodo
         cliente = form.cleaned_data['cliente']
         if form.cleaned_data['filtro'] == 'cliente' and cliente and periodo:
             contexto.update(contexto_lineas(cliente, periodo))
@@ -92,6 +94,50 @@ def planilla_administrador(request, datos=None, error=None, status=200):
 @require_GET
 def ver_pedidos(request):
     return planilla_administrador(request)
+
+
+@administrador_required
+@require_GET
+def descargar_pedidos_por_cliente(request):
+    form = VerPedidosForm({'periodo': request.GET.get('periodo', ''), 'filtro': 'cliente'})
+    if not form.is_valid() or form.cleaned_data['periodo'] is None:
+        return HttpResponseBadRequest('Seleccioná un período válido para descargar los pedidos.')
+    periodo = form.cleaned_data['periodo']
+    respuesta = HttpResponse(content_type='text/csv; charset=utf-8')
+    respuesta['Content-Disposition'] = 'attachment; filename="pedidos_por_cliente.csv"'
+    respuesta.write('\ufeff')  # Conserva los acentos al abrir el archivo en Excel.
+    escritor = csv.writer(respuesta)
+    escritor.writerow(['Número de pedido', 'Producto', 'Color', 'Talle', 'Proveedor', 'Cliente'])
+    relaciones = ('pedido__usuario', 'proveedor', 'producto__id_proveedor')
+    lineas = LineaPedido.objects.filter(
+        principal__isnull=True, pedido__pedido_general=periodo,
+    ).select_related(*relaciones).prefetch_related(
+        Prefetch('opciones', queryset=LineaPedido.objects.select_related(*relaciones).order_by('posicion', 'pk')),
+    ).order_by(
+        Lower('pedido__usuario__username').desc(), 'pedido__usuario_id',
+        '-pedido__pedido_general_id', 'posicion', 'pk',
+    )
+
+    def escribir_fila(linea, numero):
+        proveedor = linea.proveedor or (linea.producto.id_proveedor if linea.producto_id else None)
+        valores = [str(numero), linea.nombre, linea.color, linea.talle,
+                   proveedor.nombre if proveedor else '', linea.pedido.usuario.username]
+        # Los textos ingresados por clientes deben abrirse como texto, sin ejecutar fórmulas.
+        escritor.writerow([
+            "'" + valor if valor.lstrip().startswith(('=', '+', '-', '@')) or valor.startswith(('\t', '\r', '\n'))
+            else valor for valor in valores
+        ])
+
+    grupo_anterior = None
+    numero = 0
+    for linea in lineas.iterator(chunk_size=1000):
+        grupo = (linea.pedido.usuario_id, linea.pedido.pedido_general_id)
+        numero = numero + 1 if grupo == grupo_anterior else 1
+        grupo_anterior = grupo
+        escribir_fila(linea, numero)
+        for indice, opcion in enumerate(linea.opciones.all(), 1):
+            escribir_fila(opcion, f'{numero} - Opción {indice}')
+    return respuesta
 
 
 def edicion_planilla_required(view):
