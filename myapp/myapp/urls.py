@@ -39,6 +39,8 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('mis-pedidos/', pedidos.mis_pedidos, name='mis_pedidos'),
     path('ver-pedidos/', pedidos.ver_pedidos, name='ver_pedidos'),
+    path('ver-pedidos/descarga-por-cliente/', pedidos.descargar_pedidos_por_cliente,
+         name='descargar_pedidos_por_cliente'),
     path('ver-pedidos/<int:periodo_id>/<int:cliente_id>/agregar/',
          pedidos.agregar_pedido, name='admin_agregar_pedido'),
     path('ver-pedidos/<int:periodo_id>/<int:cliente_id>/<int:linea_id>/opciones/agregar/',
