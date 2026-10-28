@@ -92,8 +92,10 @@
 {% endif %}
     {% if periodo_descarga %}
     <a class="btn btn-info" href="{% url 'descargar_pedidos_por_cliente' %}?periodo={{ periodo_descarga.pk }}">Descarga por cliente</a>
+    <a class="btn btn-secondary" href="{% url 'descargar_pedidos_por_proveedor' %}?periodo={{ periodo_descarga.pk }}">Descarga por proveedor</a>
     {% else %}
-    <button class="btn btn-info" type="button" disabled>Descarga por cliente</button>
+    <button class="btn btn-secundary" type="button" disabled>Descarga por cliente</button>
+    <button class="btn btn-secondary" type="button" disabled>Descarga por proveedor</button>
     {% endif %}
 </div>
 <script src="{% static 'producto/js/ver_pedidos.js' %}?v=20261011" defer></script>
