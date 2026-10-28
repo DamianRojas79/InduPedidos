@@ -179,6 +179,26 @@ class VerPedidosTests(TestCase):
             ['1', self.linea.nombre, '', '', '', 'ana'],
         ])
 
+    def test_descargas_excluyen_pedidos_y_opciones_de_administradores(self):
+        otro_admin = get_user_model().objects.create_user('otro_admin', is_staff=True)
+        for admin in [self.admin, otro_admin]:
+            for periodo in [self.actual, self.anterior]:
+                linea = self.crear_linea(admin, periodo, 'Pedido del administrador')
+                LineaPedido.objects.create(
+                    pedido=linea.pedido, principal=linea, posicion=1,
+                    nombre='Opción del administrador', precio=0, cantidad=1,
+                )
+        for ruta in ['descargar_pedidos_por_cliente', 'descargar_pedidos_por_proveedor']:
+            for periodo, esperados in [
+                (self.actual, [self.linea.nombre, self.ajena.nombre]),
+                (self.anterior, [self.historica.nombre]),
+            ]:
+                with self.subTest(ruta=ruta, periodo=periodo.pk):
+                    filas = self.leer_csv(self.client.get(reverse(ruta), {'periodo': periodo.pk}))
+                    self.assertCountEqual([fila[1] for fila in filas[1:]], esperados)
+        # La exclusión solo afecta al archivo; los pedidos siguen guardados.
+        self.assertEqual(LineaPedido.objects.filter(pedido__usuario__is_staff=True).count(), 8)
+
     def test_descarga_proveedores_opciones_y_caracteres_especiales(self):
         original = self.crear_proveedor('Fábrica, "Sur"')
         elegido = self.crear_proveedor('Proveedor manual')
@@ -247,6 +267,99 @@ class VerPedidosTests(TestCase):
         self.assertRedirects(self.client.get(url), reverse('login') + '?next=' + url)
         self.client.force_login(self.cliente)
         self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_descarga_por_proveedor_ordena_todos_los_clientes_y_solo_filtra_periodo(self):
+        alfa = self.crear_proveedor('alfa')
+        zeta = self.crear_proveedor('Zeta')
+        producto = Producto.objects.create(nombre='Catálogo', precio=100, id_proveedor=zeta)
+        self.linea.producto = producto
+        self.linea.proveedor = alfa
+        self.linea.save()
+        self.ajena.producto = producto
+        self.ajena.nombre = 'Remera, "especial"\nAlgodón'
+        self.ajena.color = 'Azul'
+        self.ajena.talle = 'XL'
+        self.ajena.save()
+        segunda = self.crear_linea(self.cliente, self.actual, 'Segundo pedido')
+        segunda.posicion = 2
+        segunda.proveedor = zeta
+        segunda.save()
+        LineaPedido.objects.create(
+            pedido=self.linea.pedido, principal=self.linea, posicion=1,
+            nombre='Alternativa', proveedor=zeta, precio=0, cantidad=1,
+        )
+        self.crear_linea(self.otro, self.actual, 'Sin proveedor')
+        self.crear_linea(self.cliente, None, 'Sin período')
+        respuesta = self.client.get(reverse('descargar_pedidos_por_proveedor'), {
+            'periodo': self.actual.pk, 'cliente': self.cliente.pk,
+            'filtro': 'proveedor', 'proveedor': alfa.pk,
+        })
+        self.assertEqual(respuesta['Content-Type'], 'text/csv; charset=utf-8')
+        self.assertEqual(respuesta['Content-Disposition'], 'attachment; filename="pedidos_por_proveedor.csv"')
+        self.assertTrue(respuesta.content.startswith(b'\xef\xbb\xbf'))
+        filas = self.leer_csv(respuesta)
+        self.assertEqual(filas[0], ['Número de pedido', 'Producto', 'Color', 'Talle', 'Cliente', 'Proveedor'])
+        self.assertEqual(filas[1:], [
+            ['1', self.linea.nombre, '', '', 'ana', 'alfa'],
+            ['1', self.ajena.nombre, 'Azul', 'XL', 'beatriz', 'Zeta'],
+            ['1 - Opción 1', 'Alternativa', '', '', 'ana', 'Zeta'],
+            ['2', 'Segundo pedido', '', '', 'ana', 'Zeta'],
+            ['2', 'Sin proveedor', '', '', 'beatriz', ''],
+        ])
+        sin_filtros = self.client.get(reverse('descargar_pedidos_por_proveedor'), {
+            'periodo': self.actual.pk, 'cliente': 'inexistente',
+            'proveedor': 'inexistente', 'filtro': 'inexistente',
+        })
+        self.assertEqual(self.leer_csv(sin_filtros), filas)
+
+    def test_descarga_por_proveedor_periodos_y_permisos(self):
+        url = reverse('descargar_pedidos_por_proveedor')
+        filas = self.leer_csv(self.client.get(url, {'periodo': self.anterior.pk}))
+        self.assertEqual(filas[1:], [['1', self.historica.nombre, '', '', 'ana', '']])
+        for datos in [{}, {'periodo': ''}, {'periodo': 'incorrecto'}, {'periodo': 99999},
+                      {'periodo': '-1'}, {'periodo': '9' * 100}]:
+            with self.subTest(datos=datos):
+                respuesta = self.client.get(url, datos)
+                self.assertEqual(respuesta.status_code, 400)
+                self.assertNotIn('Content-Disposition', respuesta)
+        Pedido.objects.all().delete()
+        self.assertEqual(len(self.leer_csv(self.client.get(url, {'periodo': self.actual.pk}))), 1)
+        self.assertEqual(self.client.post(url, {'periodo': self.actual.pk}).status_code, 405)
+        self.client.logout()
+        self.assertRedirects(self.client.get(url), reverse('login') + '?next=' + url)
+        self.client.force_login(self.cliente)
+        self.assertEqual(self.client.get(url, {'periodo': self.actual.pk}).status_code, 403)
+
+    def test_descarga_por_proveedor_protege_formulas(self):
+        self.linea.nombre = '=1+1'
+        self.linea.color = '+SUM(1,2)'
+        self.linea.talle = '@SUM(1,2)'
+        self.linea.proveedor = self.crear_proveedor('-Proveedor')
+        self.linea.save()
+        filas = self.leer_csv(self.client.get(reverse('descargar_pedidos_por_proveedor'), {
+            'periodo': self.actual.pk,
+        }))
+        self.assertIn(['1', "'=1+1", "'+SUM(1,2)", "'@SUM(1,2)", 'ana', "'-Proveedor"], filas)
+
+    def test_boton_descarga_por_proveedor_gris_junto_a_descarga_por_cliente(self):
+        url = reverse('descargar_pedidos_por_proveedor')
+        url_cliente = reverse('descargar_pedidos_por_cliente')
+        proveedor = self.crear_proveedor('Proveedor')
+        for datos in [{}, {'cliente': self.cliente.pk},
+                      {'periodo': self.anterior.pk, 'cliente': self.cliente.pk},
+                      {'filtro': 'proveedor', 'proveedor': proveedor.pk}]:
+            with self.subTest(datos=datos):
+                respuesta = self.client.get(reverse('ver_pedidos'), datos)
+                periodo_id = datos.get('periodo', self.actual.pk)
+                self.assertContains(respuesta,
+                    f'<a class="btn btn-info" href="{url_cliente}?periodo={periodo_id}">Descarga por cliente</a>'
+                    f'<a class="btn btn-secondary" href="{url}?periodo={periodo_id}">Descarga por proveedor</a>',
+                    html=True)
+        Pedido.objects.all().delete()
+        PedidoGeneral.objects.all().delete()
+        self.assertContains(self.client.get(reverse('ver_pedidos')),
+                            '<button class="btn btn-secondary" type="button" disabled>Descarga por proveedor</button>',
+                            html=True)
 
     def test_columna_proveedor_precarga_producto_y_ordena_combo_por_nombre(self):
         zeta = self.crear_proveedor('Zeta')
