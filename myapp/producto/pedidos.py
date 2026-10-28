@@ -99,18 +99,30 @@ def ver_pedidos(request):
 @administrador_required
 @require_GET
 def descargar_pedidos_por_cliente(request):
+    return descargar_pedidos_csv(request)
+
+
+@administrador_required
+@require_GET
+def descargar_pedidos_por_proveedor(request):
+    return descargar_pedidos_csv(request, por_proveedor=True)
+
+
+def descargar_pedidos_csv(request, por_proveedor=False):
     form = VerPedidosForm({'periodo': request.GET.get('periodo', ''), 'filtro': 'cliente'})
     if not form.is_valid() or form.cleaned_data['periodo'] is None:
         return HttpResponseBadRequest('Seleccioná un período válido para descargar los pedidos.')
     periodo = form.cleaned_data['periodo']
     respuesta = HttpResponse(content_type='text/csv; charset=utf-8')
-    respuesta['Content-Disposition'] = 'attachment; filename="pedidos_por_cliente.csv"'
+    criterio = 'proveedor' if por_proveedor else 'cliente'
+    respuesta['Content-Disposition'] = f'attachment; filename="pedidos_por_{criterio}.csv"'
     respuesta.write('\ufeff')  # Conserva los acentos al abrir el archivo en Excel.
     escritor = csv.writer(respuesta)
-    escritor.writerow(['Número de pedido', 'Producto', 'Color', 'Talle', 'Proveedor', 'Cliente'])
+    columnas_finales = ['Cliente', 'Proveedor'] if por_proveedor else ['Proveedor', 'Cliente']
+    escritor.writerow(['Número de pedido', 'Producto', 'Color', 'Talle', *columnas_finales])
     relaciones = ('pedido__usuario', 'proveedor', 'producto__id_proveedor')
     lineas = LineaPedido.objects.filter(
-        principal__isnull=True, pedido__pedido_general=periodo,
+        principal__isnull=True, pedido__pedido_general=periodo, pedido__usuario__is_staff=False,
     ).select_related(*relaciones).prefetch_related(
         Prefetch('opciones', queryset=LineaPedido.objects.select_related(*relaciones).order_by('posicion', 'pk')),
     ).order_by(
@@ -118,25 +130,34 @@ def descargar_pedidos_por_cliente(request):
         '-pedido__pedido_general_id', 'posicion', 'pk',
     )
 
-    def escribir_fila(linea, numero):
+    def valores_fila(linea, numero):
         proveedor = linea.proveedor or (linea.producto.id_proveedor if linea.producto_id else None)
-        valores = [str(numero), linea.nombre, linea.color, linea.talle,
-                   proveedor.nombre if proveedor else '', linea.pedido.usuario.username]
+        return [str(numero), linea.nombre, linea.color, linea.talle,
+                proveedor.nombre if proveedor else '', linea.pedido.usuario.username]
+
+    def filas_numeradas():
+        grupo_anterior = None
+        numero = 0
+        for linea in lineas.iterator(chunk_size=1000):
+            grupo = (linea.pedido.usuario_id, linea.pedido.pedido_general_id)
+            numero = numero + 1 if grupo == grupo_anterior else 1
+            grupo_anterior = grupo
+            yield valores_fila(linea, numero)
+            for indice, opcion in enumerate(linea.opciones.all(), 1):
+                yield valores_fila(opcion, f'{numero} - Opción {indice}')
+
+    filas = filas_numeradas()
+    if por_proveedor:
+        # Numerar antes de ordenar conserva la referencia de cada pedido y opción.
+        filas = sorted(filas, key=lambda fila: (not fila[4], fila[4].casefold()))
+    for valores in filas:
+        if por_proveedor:
+            valores[4], valores[5] = valores[5], valores[4]
         # Los textos ingresados por clientes deben abrirse como texto, sin ejecutar fórmulas.
         escritor.writerow([
             "'" + valor if valor.lstrip().startswith(('=', '+', '-', '@')) or valor.startswith(('\t', '\r', '\n'))
             else valor for valor in valores
         ])
-
-    grupo_anterior = None
-    numero = 0
-    for linea in lineas.iterator(chunk_size=1000):
-        grupo = (linea.pedido.usuario_id, linea.pedido.pedido_general_id)
-        numero = numero + 1 if grupo == grupo_anterior else 1
-        grupo_anterior = grupo
-        escribir_fila(linea, numero)
-        for indice, opcion in enumerate(linea.opciones.all(), 1):
-            escribir_fila(opcion, f'{numero} - Opción {indice}')
     return respuesta
 
 
