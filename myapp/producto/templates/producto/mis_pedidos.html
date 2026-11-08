@@ -2,7 +2,8 @@
 {% load static %}
 {% block title %}Mis pedidos | InduPedidos{% endblock %}
 {% block content %}
-<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
+<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20261104" rel="stylesheet">
+<div class="mis-pedidos">
 <h1>Mis pedidos</h1>
 {% if error %}<p class="alert alert-danger" role="alert">{{ error }}</p>{% endif %}
 {% if pedido_general %}
@@ -19,7 +20,7 @@
 <script src="{% static 'producto/js/mis_pedidos.js' %}?v=20261008" defer></script>
 {% else %}<p>Todavía no realizaste pedidos.</p>{% endif %}
 {% endif %}
-<div class="d-flex gap-2 align-items-center">
+<div class="d-flex flex-wrap gap-2 align-items-center">
 {% if pedido_general %}
 <form id="agregar-pedido" method="post" action="{% url 'agregar_pedido' %}">
 {% csrf_token %}
@@ -29,5 +30,6 @@
 <button class="btn btn-success" type="button" disabled>Agregar nuevo pedido</button>
 {% endif %}
 <a class="btn btn-dark" href="{% url 'producto' %}">Ver productos</a>
+</div>
 </div>
 {% endblock %}

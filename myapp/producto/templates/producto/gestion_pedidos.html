@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Gestión de pedidos | InduPedidos{% endblock %}
 {% block content %}
-<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20260930" rel="stylesheet">
+<link href="{% static 'producto/css/mis_pedidos.css' %}?v=20261104" rel="stylesheet">
 <h1 class="mb-4">Gestión de pedidos</h1>
 {% for message in messages %}
 <p class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}" role="status">{{ message }}</p>

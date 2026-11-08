@@ -24,3 +24,44 @@
 .numero-opcion { display: block; padding: .7rem 1.2rem; white-space: nowrap; }
 .planilla-pedidos .valor-pedido { display: block; padding: .7rem; }
 .planilla-generales th:first-child { width: 40%; }
+.etiqueta-campo-mobile { display: none; }
+
+@media (max-width: 767.98px) {
+    .mis-pedidos .contenido-planilla { min-width: 0; padding-right: 0; }
+    .mis-pedidos .planilla-pedidos,
+    .mis-pedidos .planilla-pedidos tbody { display: block; width: 100%; }
+    .mis-pedidos .planilla-pedidos { border: 0; background: transparent; }
+    .mis-pedidos .planilla-pedidos thead { display: none; }
+    .mis-pedidos .planilla-pedidos tbody > tr {
+        display: block; margin-bottom: 1rem; padding: 1rem;
+        border: 1px solid #adb5bd; border-radius: .5rem; background: white;
+    }
+    .mis-pedidos .planilla-pedidos tbody > tr > td {
+        display: block; width: 100%; padding: 0; border: 0;
+        background: transparent; box-shadow: none;
+    }
+    .mis-pedidos .planilla-pedidos tbody > tr > td + td { margin-top: .75rem; }
+    .mis-pedidos .etiqueta-campo-mobile {
+        display: block; margin-bottom: .25rem; font-weight: 600;
+    }
+    .mis-pedidos .planilla-pedidos input {
+        min-width: 0; min-height: 44px; border: 1px solid #adb5bd;
+        border-radius: .25rem; background: white; font-size: 1rem;
+    }
+    .mis-pedidos .planilla-pedidos input:focus { background: #f3fff7; }
+    .mis-pedidos .planilla-pedidos input[aria-invalid="true"] { background: #fff0f0; }
+    .mis-pedidos .planilla-pedidos tbody > tr > .celda-numero {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    }
+    .mis-pedidos .celda-numero .etiqueta-campo-mobile { margin-bottom: 0; }
+    .mis-pedidos .celda-numero input { width: 5rem; }
+    .mis-pedidos .planilla-pedidos .acciones-pedido {
+        position: static; width: auto; height: auto;
+        flex-wrap: wrap; gap: .5rem; margin-top: 1rem; padding: 0;
+    }
+    .mis-pedidos .acciones-pedido button { min-height: 44px; }
+    .mis-pedidos .planilla-pedidos tbody > .fila-opcion {
+        margin-left: .75rem; border-left: 3px solid #198754; background: #f6f8f7;
+    }
+    .mis-pedidos .numero-opcion { padding: 0; font-weight: 600; }
+}
