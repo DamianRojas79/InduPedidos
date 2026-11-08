@@ -24,7 +24,8 @@
 .numero-opcion { display: block; padding: .7rem 1.2rem; white-space: nowrap; }
 .planilla-pedidos .valor-pedido { display: block; padding: .7rem; }
 .planilla-generales th:first-child { width: 40%; }
-.etiqueta-campo-mobile { display: none; }
+.etiqueta-campo-mobile,
+.numero-pedido-mobile { display: none; }
 
 @media (max-width: 767.98px) {
     .mis-pedidos .contenido-planilla { min-width: 0; padding-right: 0; }
@@ -53,8 +54,10 @@
     .mis-pedidos .planilla-pedidos tbody > tr > .celda-numero {
         display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
     }
-    .mis-pedidos .celda-numero .etiqueta-campo-mobile { margin-bottom: 0; }
-    .mis-pedidos .celda-numero input { width: 5rem; }
+    .mis-pedidos .numero-pedido-mobile {
+        display: block; width: 100%; text-align: center; font-weight: 600;
+    }
+    .mis-pedidos .celda-numero input { display: none; }
     .mis-pedidos .planilla-pedidos .acciones-pedido {
         position: static; width: auto; height: auto;
         flex-wrap: wrap; gap: .5rem; margin-top: 1rem; padding: 0;
