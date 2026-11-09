@@ -1,5 +1,9 @@
 .filtros-pedidos { width: 25vw; max-width: 100%; }
 .contenido-planilla { min-width: 1150px; }
+.contenido-planilla .planilla-pedidos th:first-child,
+.planilla-pedidos .celda-numero { width: 10%; }
+.planilla-pedidos .celda-numero input { min-width: 0; }
+.planilla-pedidos .numero-opcion { padding: .7rem .5rem; }
 .planilla-pedidos .celda-proveedor { position: relative; }
 .planilla-pedidos select {
     display: block; width: 100%; min-width: 180px; padding: .7rem;
