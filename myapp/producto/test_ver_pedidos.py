@@ -249,7 +249,7 @@ class VerPedidosTests(TestCase):
             respuesta = self.client.get(reverse('ver_pedidos'), datos)
             periodo_id = datos.get('periodo', self.actual.pk)
             self.assertContains(respuesta,
-                                f'<a class="btn btn-info" href="{url}?periodo={periodo_id}">Descarga por cliente</a>',
+                                f'<a class="btn btn-info d-none d-md-inline-block" href="{url}?periodo={periodo_id}">Descarga por cliente</a>',
                                 html=True)
             if 'cliente' in datos or 'proveedor' in datos:
                 self.assertGreater(respuesta.content.index(url.encode()), respuesta.content.index(b'</table>'))
@@ -352,13 +352,13 @@ class VerPedidosTests(TestCase):
                 respuesta = self.client.get(reverse('ver_pedidos'), datos)
                 periodo_id = datos.get('periodo', self.actual.pk)
                 self.assertContains(respuesta,
-                    f'<a class="btn btn-info" href="{url_cliente}?periodo={periodo_id}">Descarga por cliente</a>'
-                    f'<a class="btn btn-secondary" href="{url}?periodo={periodo_id}">Descarga por proveedor</a>',
+                    f'<a class="btn btn-info d-none d-md-inline-block" href="{url_cliente}?periodo={periodo_id}">Descarga por cliente</a>'
+                    f'<a class="btn btn-secondary d-none d-md-inline-block" href="{url}?periodo={periodo_id}">Descarga por proveedor</a>',
                     html=True)
         Pedido.objects.all().delete()
         PedidoGeneral.objects.all().delete()
         self.assertContains(self.client.get(reverse('ver_pedidos')),
-                            '<button class="btn btn-secondary" type="button" disabled>Descarga por proveedor</button>',
+                            '<button class="btn btn-secondary d-none d-md-inline-block" type="button" disabled>Descarga por proveedor</button>',
                             html=True)
 
     def test_columna_proveedor_precarga_producto_y_ordena_combo_por_nombre(self):
