@@ -37,7 +37,7 @@ body {
 
 .navbar { border-bottom: 1px solid rgba(255, 255, 255, .12); min-height: 76px; }
 .navbar-brand { align-items: center; display: flex; font-weight: 700; gap: .7rem; letter-spacing: -.02em; }
-.brand-mark { align-items: center; background: var(--terracotta); border-radius: 50%; display: inline-flex; font-size: .72rem; height: 34px; justify-content: center; letter-spacing: .05em; width: 34px; }
+.brand-logo { border-radius: 50%; display: block; flex-shrink: 0; height: 56px; object-fit: contain; width: 56px; }
 .social-link { align-items: center; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; color: #fff; display: inline-flex; height: 38px; justify-content: center; transition: .2s ease; width: 38px; }
 .social-link:hover { background: #fff; color: var(--sage-dark); transform: translateY(-2px); }
 .hero-content { padding-bottom: 4.5rem; padding-top: 4.5rem; position: relative; z-index: 1; }
